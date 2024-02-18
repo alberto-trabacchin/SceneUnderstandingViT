@@ -42,6 +42,13 @@ class AverageMeter:
 
 def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
     pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
+    train_lb_size = len(train_lb_dataset)
+    test_lb_size = len(test_dataset)
+    wandb.init(
+        project='DriViSafe-Supervised',
+        name=f'{args.name}_{train_lb_size}TL_{test_lb_size}VL',
+        config=args
+    )
     train_iter = iter(train_loader)
     train_loss = AverageMeter()
     val_loss = AverageMeter()
@@ -69,8 +76,6 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
         pbar.set_description(f"{step+1:4d}/{args.train_steps}  train/loss: {train_loss.avg :.4E} | train/acc: {train_acc.avg:.4f}")
         
         if (step + 1) % args.eval_steps == 0:
-            train_loss.reset()
-            train_acc.reset()
             pbar.close()
             pbar = tqdm.tqdm(total=len(val_loader), position=0, leave=True, desc="Validating...")
             model.eval()
@@ -93,9 +98,13 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
                 "val/loss": val_loss.avg,
                 "val/acc": val_acc.avg,
                 "top1_acc": top1_acc
-            })
+            }, step = step)
+            wandb.watch(models = model, log='all')
+            print(f'top1_acc: {top1_acc:.6f}')
             val_loss.reset()
             val_acc.reset()
+            train_loss.reset()
+            train_acc.reset()
             pbar.close()
             pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
 
@@ -116,10 +125,6 @@ def accuracy(preds, labels):
 
 
 if __name__ == '__main__':
-    wandb.init(
-        project="DriViSafe-Supervised"
-    )
-
     train_lb_dataset, train_ul_dataset, val_dataset, test_dataset = data.get_dreyeve()
     train_lb_loader = DataLoader(
         dataset = train_lb_dataset,
