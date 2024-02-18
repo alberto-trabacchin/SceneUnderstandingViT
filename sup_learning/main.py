@@ -12,7 +12,7 @@ import wandb
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, default='default')
 parser.add_argument('--data-path', type=str, default='./dreve')
-parser.add_argument('--batch-size', type=int, default=64)
+parser.add_argument('--batch-size', type=int, default=32)
 parser.add_argument('--train-steps', type=int, default=10000)
 parser.add_argument('--eval-steps', type=int, default=500)
 parser.add_argument('--num-classes', type=int, default=2)
@@ -125,7 +125,7 @@ def accuracy(preds, labels):
 
 
 if __name__ == '__main__':
-    train_lb_dataset, train_ul_dataset, val_dataset, test_dataset = data.get_dreyeve()
+    train_lb_dataset, train_ul_dataset, val_dataset, test_dataset = data.get_dreyeve(args)
     train_lb_loader = DataLoader(
         dataset = train_lb_dataset,
         batch_size = args.batch_size,
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     )
 
     model = SimpleViT(
-        image_size = (192, 108),
+        image_size = (384, 216),
         patch_size = 6,
         num_classes = args.num_classes,
         dim = 64,
