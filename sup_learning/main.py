@@ -10,6 +10,7 @@ import wandb
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--name', type=str, default='default')
 parser.add_argument('--data-path', type=str, default='./dreve')
 parser.add_argument('--batch-size', type=int, default=64)
 parser.add_argument('--train-steps', type=int, default=10000)
@@ -85,6 +86,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
             pbar.set_description(f"{step+1:4d}/{args.train_steps}  VALID/loss: {val_loss.avg:.4E} | VALID/acc: {val_acc.avg:.4f}")
             if val_acc.avg > top1_acc:
                 top1_acc = val_acc.avg
+                wandb.save('model.pth')
             wandb.log({
                 "train/loss": train_loss.avg,
                 "train/acc": train_acc.avg,
