@@ -32,14 +32,14 @@ class Dreyeve(ImageFolder):
         return classes, classes_count, classes_weights
 
         
-def get_dreyeve():
+def get_dreyeve(args):
     transform = transforms.Compose([
         transforms.ToTensor()
     ])
-    train_lb_dataset = Dreyeve(root="./dreyeve", mode='train_lb', transform=transform)
-    train_ul_dataset = Dreyeve(root="./dreyeve", mode='train_ul', transform=transform)
-    val_dataset = Dreyeve(root="./dreyeve", mode='val', transform=transform)
-    test_dataset = Dreyeve(root="./dreyeve", mode='test', transform=transform)
+    train_lb_dataset = Dreyeve(root=args.data_path, mode='train_lb', transform=transform)
+    train_ul_dataset = Dreyeve(root=args.data_path, mode='train_ul', transform=transform)
+    val_dataset = Dreyeve(root=args.data_path, mode='val', transform=transform)
+    test_dataset = Dreyeve(root=args.data_path, mode='test', transform=transform)
     return train_lb_dataset, train_ul_dataset, val_dataset, test_dataset
 
 
