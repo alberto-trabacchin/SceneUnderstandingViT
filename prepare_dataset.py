@@ -17,7 +17,7 @@ parser.add_argument('--test-size', default=200)
 parser.add_argument('--batch-size', type=int, default=16)
 parser.add_argument('--seed', type=int)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
-parser.add_argument('--resize', type=int, default=None)
+parser.add_argument('--resize', type=int, nargs='+', default=None, help='Resize images to this size (width, height)')
 
 args = parser.parse_args()
 args.device = torch.device(args.device)
@@ -46,9 +46,15 @@ def detect_targets(args, data_paths, mode):
     model = retinanet_resnet50_fpn_v2(weights = RetinaNet_ResNet50_FPN_V2_Weights.DEFAULT)
     model = model.to(args.device)
     model.eval()
-    img_transform = transforms.Compose([
-        transforms.ToTensor()
-    ])
+    if args.resize is not None:
+        img_transform = transforms.Compose([
+            transforms.Resize(size=tuple(args.resize), antialias=True),
+            transforms.ToTensor()
+        ])
+    else:
+        img_transform = transforms.Compose([
+            transforms.ToTensor()
+        ])
     outputs = []
     pbar = tqdm.tqdm(total=len(data_paths), desc=f'Processing {mode} data')
   
