@@ -91,6 +91,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
                     val_acc.update(accuracy(preds, labels))
                 pbar.update(1)
             pbar.set_description(f"{step+1:4d}/{args.train_steps}  VALID/loss: {val_loss.avg:.4E} | VALID/acc: {val_acc.avg:.4f}")
+            pbar.close()
             if val_acc.avg > top1_acc:
                 top1_acc = val_acc.avg
                 save_path = Path('checkpoints/')
@@ -112,7 +113,6 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
             val_acc.reset()
             train_loss.reset()
             train_acc.reset()
-            pbar.close()
             pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
 
 

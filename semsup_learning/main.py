@@ -168,9 +168,9 @@ def train_loop(
             if student_val_acc.avg > student_top1_acc:
                 student_top1_acc = student_val_acc.avg
 
-            print(f"{step+1:4d}/{args.train_steps}  teacher/valid/loss: {teacher_val_loss.avg:.4E} | teacher/valid/acc: {teacher_val_acc.avg:.4f}")
-            print(f"{step+1:4d}/{args.train_steps}  student/valid/loss: {student_val_loss.avg:.4E} | student/valid/acc: {student_val_acc.avg:.4f}")
-            print(f"{step+1:4d}/{args.train_steps}  teacher/top1_acc: {teacher_top1_acc:.4f} | student/top1_acc: {student_top1_acc:.4f}")
+            print(f"{step+1:4d}/{args.train_steps}  teac/valid/loss: {teacher_val_loss.avg:.4E} | teacher/valid/acc: {teacher_val_acc.avg:.4f}")
+            print(f"{step+1:4d}/{args.train_steps}  stud/valid/loss: {student_val_loss.avg:.4E} | student/valid/acc: {student_val_acc.avg:.4f}")
+            print(f"teac/top1_acc: {teacher_top1_acc:.4f} | stud/top1_acc: {student_top1_acc:.4f}")
 
             wandb.log({
                 "teacher/train_loss": teacher_train_loss.avg,
