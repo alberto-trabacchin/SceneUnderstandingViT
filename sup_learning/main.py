@@ -108,7 +108,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
                 "top1_acc": top1_acc
             }, step = step)
             wandb.watch(models = model, log='all')
-            print(f'top1_acc: {top1_acc:.6f}')
+            print(f'top1_acc: {top1_acc:.6f}\n')
             val_loss.reset()
             val_acc.reset()
             train_loss.reset()
