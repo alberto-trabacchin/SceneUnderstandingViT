@@ -71,7 +71,7 @@ def detect_targets(args, data_paths, mode):
             img = img_transform(img)
             data_batch.append(img)
         data_batch = torch.stack(data_batch).to(args.device)
-        with torch.no_grad():
+        with torch.inference_mode():
             preds = model(data_batch)
             outputs.extend(preds)
         pbar.update(len(paths_batch))
@@ -83,6 +83,11 @@ def detect_targets(args, data_paths, mode):
 def save_data(args, data_paths, targets, mode):
     dang_path = Path(args.save_path) / f'{mode}' / 'dangerous'
     safe_path = Path(args.save_path) / f'{mode}' / 'safe'
+    if args.resize is not None:
+        img_transform = transforms.Compose([
+            transforms.Resize(size=tuple(args.resize), antialias=True),
+        ])
+
     if mode == 'val' or mode == 'test':
         dang_count = targets.count(1)
         safe_count = targets.count(0)
@@ -111,6 +116,8 @@ def save_data(args, data_paths, targets, mode):
             else:
                 save_path = safe_path / f'{i}.jpg'
             img = Image.open(p)
+            if args.resize is not None:
+                img = img_transform(img)
             img.save(save_path)
             pbar.update(1)
     else:
@@ -119,6 +126,8 @@ def save_data(args, data_paths, targets, mode):
         for i, p in enumerate(data_paths):
             img = Image.open(p)
             save_path = class_path / f'{i}.jpg'
+            if args.resize is not None:
+                img = img_transform(img)
             img.save(save_path)
             pbar.update(1)
 
