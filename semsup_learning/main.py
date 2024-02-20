@@ -129,8 +129,8 @@ def train_loop(
         teacher_loss.backward()
         teacher_optim.step()
         pbar.update(1)
-        pbar.set_description(f"{step+1:4d}/{args.train_steps}  teacher/train/loss: {teacher_train_loss.avg :.4E} | "
-                             f"student/train/loss: {student_train_loss.avg:.4E}")
+        pbar.set_description(f"{step+1:4d}/{args.train_steps}  teac/train/loss: {teacher_train_loss.avg :.4E} | "
+                             f"stud/train/loss: {student_train_loss.avg:.4E}")
 
         if (step + 1) % args.eval_steps == 0:
             pbar.close()
