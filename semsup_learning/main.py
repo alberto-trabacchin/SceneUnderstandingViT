@@ -7,6 +7,7 @@ import tqdm
 import numpy as np
 import random
 import wandb
+import torch.nn.functional as F
 
 
 parser = argparse.ArgumentParser()
@@ -20,7 +21,7 @@ parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--workers', type=int, default=4)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
 parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--image-size', type=int, nargs='+', default=[108, 192], help='(height, width)')
+parser.add_argument('--image-size', type=int, nargs='+', default=[216, 384], help='(height, width)')
 args = parser.parse_args()
 
 
@@ -43,7 +44,6 @@ class AverageMeter:
 
 def train_loop(
         args, teacher, student,
-        teacher_criter, student_criter,
         teacher_optim, student_optim,
         train_lb_loader, train_ul_loader, val_loader
 ):
@@ -53,8 +53,14 @@ def train_loop(
     student_val_loss = AverageMeter()
     teacher_val_acc = AverageMeter()
     student_val_acc = AverageMeter()
+    teacher_train_loss = AverageMeter()
+    teacher_train_acc = AverageMeter()
+    student_train_loss = AverageMeter()
+    student_train_acc = AverageMeter()
     teacher_top1_acc = 0
     student_top1_acc = 0
+
+    pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
 
     for step in range(args.train_steps):
         teacher.train()
@@ -87,13 +93,13 @@ def train_loop(
 
         # train the student
         student_optim.zero_grad()
-        student_loss = student_criter(student_lb_logits, targets)
+        student_loss = F.cross_entropy(student_lb_logits, targets, reduction="mean")
         student_loss.backward()
         student_grad_1 = [p.grad.data.clone().detach() for p in student.parameters()]
 
         # train the student
         student_optim.zero_grad()
-        student_loss = student_criter(student_ul_logits, teacher_ul_targets.detach())
+        student_loss = F.cross_entropy(student_ul_logits, teacher_ul_targets.detach(), reduction="mean")
         student_loss.backward()
         student_grad_2 = [p.grad.data.clone().detach() for p in student.parameters()]
         student_optim.step()
@@ -102,32 +108,51 @@ def train_loop(
 
         # train the teacher
         teacher_optim.zero_grad()
-        teacher_loss_ent = teacher_criter(teacher_lb_logits, targets, reduction="mean")
-        teacher_loss_mpl = mpl_coeff * teacher_criter(teacher_ul_logits, teacher_ul_targets.detach(), reduction="mean")
+        teacher_loss_ent = F.cross_entropy(teacher_lb_logits, targets, reduction="mean")
+        teacher_loss_mpl = mpl_coeff * F.cross_entropy(teacher_ul_logits, teacher_ul_targets.detach(), reduction="mean")
 
         teacher_loss = teacher_loss_ent + teacher_loss_mpl
+
+        teacher_train_loss.update(teacher_loss.item())
+        student_train_loss.update(student_loss.item())
+
         teacher_loss.backward()
         teacher_optim.step()
+        pbar.update(1)
+        pbar.set_description(f"{step+1:4d}/{args.train_steps}  teacher/train/loss: {teacher_train_loss.avg :.4E} | "
+                             f"student/train/loss: {student_train_loss.avg:.4E}")
 
         if (step + 1) % args.eval_steps == 0:
+            pbar.close()
+            pbar = tqdm.tqdm(total=len(val_loader), position=0, leave=True, desc="Validating...")
             teacher.eval()
             student.eval()
+
             teacher_val_loss.reset()
             student_val_loss.reset()
             teacher_val_acc.reset()
             student_val_acc.reset()
+            teacher_train_loss.reset()
+            teacher_train_acc.reset()
+            student_train_loss.reset()
+            student_train_acc.reset()
+
             with torch.inference_mode():
                 for val_batch in val_loader:
                     imgs, labels = val_batch
                     imgs, labels = imgs.to(args.device), labels.to(args.device)
                     teacher_preds = teacher(imgs)
                     student_preds = student(imgs)
-                    teacher_loss = teacher_criter(teacher_preds, labels)
-                    student_loss = student_criter(student_preds, labels)
+                    teacher_loss = F.cross_entropy(teacher_preds, labels, reduction="mean")
+                    student_loss = F.cross_entropy(student_preds, labels, reduction="mean")
                     teacher_val_loss.update(teacher_loss.item())
                     student_val_loss.update(student_loss.item())
                     teacher_val_acc.update(accuracy(teacher_preds, labels))
                     student_val_acc.update(accuracy(student_preds, labels))
+                    pbar.update(1)
+
+            pbar.close()
+            pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
             
             if teacher_val_acc.avg > teacher_top1_acc:
                 teacher_top1_acc = teacher_val_acc.avg
@@ -136,7 +161,8 @@ def train_loop(
                 student_top1_acc = student_val_acc.avg
 
             wandb.log({
-                "teacher/train_loss": teacher_loss.avg,
+                "teacher/train_loss": teacher_train_loss.avg,
+                "student/train_loss": student_train_loss.avg,
                 "teacher/val_loss": teacher_val_loss.avg,
                 "teacher/val_acc": teacher_val_acc.avg,
                 "student/val_loss": student_val_loss.avg,
@@ -211,19 +237,12 @@ if __name__ == '__main__':
     teacher_optim = torch.optim.Adam(teacher.parameters(), lr=args.lr)
     student_optim = torch.optim.Adam(student.parameters(), lr=args.lr)
     _, _, classes_weights = train_lb_dataset.get_info()
-    teacher_loss = torch.nn.CrossEntropyLoss(
-        weight = torch.tensor(classes_weights).to(args.device)
-    )
-    student_loss = torch.nn.CrossEntropyLoss(
-        weight = torch.tensor(classes_weights).to(args.device)
-    )
+
 
     train_loop(
         args = args,
         teacher = teacher,
         student = student,
-        teacher_criter = teacher_loss,
-        student_criter = student_loss,
         teacher_optim = teacher_optim,
         student_optim = student_optim,
         train_lb_loader = train_lb_loader,
