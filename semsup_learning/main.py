@@ -62,6 +62,15 @@ def train_loop(
 
     pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
 
+    train_lb_size = len(train_lb_dataset)
+    train_ul_size = len(train_ul_dataset)
+    test_lb_size = len(test_dataset)
+    wandb.init(
+        project='DriViSafe-Supervised',
+        name=f'{args.name}_{train_lb_size}LB_{train_ul_size}UL_{test_lb_size}VL',
+        config=args
+    )
+
     for step in range(args.train_steps):
         teacher.train()
         student.train()
@@ -152,13 +161,16 @@ def train_loop(
                     pbar.update(1)
 
             pbar.close()
-            pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
             
             if teacher_val_acc.avg > teacher_top1_acc:
                 teacher_top1_acc = teacher_val_acc.avg
             
             if student_val_acc.avg > student_top1_acc:
                 student_top1_acc = student_val_acc.avg
+
+            print(f"{step+1:4d}/{args.train_steps}  teacher/valid/loss: {teacher_val_loss.avg:.4E} | teacher/valid/acc: {teacher_val_acc.avg:.4f}")
+            print(f"{step+1:4d}/{args.train_steps}  student/valid/loss: {student_val_loss.avg:.4E} | student/valid/acc: {student_val_acc.avg:.4f}")
+            print(f"{step+1:4d}/{args.train_steps}  teacher/top1_acc: {teacher_top1_acc:.4f} | student/top1_acc: {student_top1_acc:.4f}")
 
             wandb.log({
                 "teacher/train_loss": teacher_train_loss.avg,
@@ -170,6 +182,8 @@ def train_loop(
                 "teacher/top1_acc": teacher_top1_acc,
                 "student/top1_acc": student_top1_acc
             }, step = step)
+
+            pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
     
 
 def set_seeds(seed):

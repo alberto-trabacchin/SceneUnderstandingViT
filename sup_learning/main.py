@@ -48,7 +48,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
     test_lb_size = len(test_dataset)
     wandb.init(
         project='DriViSafe-Supervised',
-        name=f'{args.name}_{train_lb_size}TL_{test_lb_size}VL',
+        name=f'{args.name}_{train_lb_size}LB_{test_lb_size}UL',
         config=args
     )
     train_iter = iter(train_loader)
