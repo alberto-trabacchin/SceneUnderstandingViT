@@ -7,6 +7,7 @@ import tqdm
 import numpy as np
 import random
 import wandb
+from pathlib import Path
 
 
 parser = argparse.ArgumentParser()
@@ -20,6 +21,7 @@ parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--workers', type=int, default=4)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
 parser.add_argument('--seed', type=int, default=42)
+parser.add_argument('--image-size', type=int, nargs='+', default=[216, 384], help='Image size (height, width)')
 args = parser.parse_args()
 
 
@@ -63,7 +65,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
         except:
             train_iter = iter(train_loader)
             batch = next(train_iter)
-        imgs, labels = batch
+        imgs, labels, idxs = batch
         imgs, labels = imgs.to(args.device), labels.to(args.device)
         optimizer.zero_grad()
         preds = model(imgs)
@@ -80,7 +82,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
             pbar = tqdm.tqdm(total=len(val_loader), position=0, leave=True, desc="Validating...")
             model.eval()
             for val_batch in val_loader:
-                imgs, labels = val_batch
+                imgs, labels, idxs = val_batch
                 imgs, labels = imgs.to(args.device), labels.to(args.device)
                 with torch.inference_mode():
                     preds = model(imgs)
@@ -91,7 +93,12 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
             pbar.set_description(f"{step+1:4d}/{args.train_steps}  VALID/loss: {val_loss.avg:.4E} | VALID/acc: {val_acc.avg:.4f}")
             if val_acc.avg > top1_acc:
                 top1_acc = val_acc.avg
-                wandb.save('model.pth')
+                save_path = Path('checkpoints/')
+                save_path.mkdir(parents=True, exist_ok=True)
+                save_path = save_path / f'{args.name}.pth'
+                torch.save(model.state_dict(), save_path)
+                wandb.save(f'{args.name}.pth')
+                print(f"--> Model saved at {save_path}")
             wandb.log({
                 "train/loss": train_loss.avg,
                 "train/acc": train_acc.avg,
@@ -146,7 +153,7 @@ if __name__ == '__main__':
     )
 
     model = SimpleViT(
-        image_size = (384, 216),
+        image_size = tuple(args.image_size),
         patch_size = 6,
         num_classes = args.num_classes,
         dim = 64,
