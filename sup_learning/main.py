@@ -44,11 +44,11 @@ class AverageMeter:
 
 def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
     pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
-    train_lb_size = len(train_lb_dataset)
-    test_lb_size = len(test_dataset)
+    train_lb_size = train_loader.dataset.__len__()
+    val_size = val_loader.dataset.__len__()
     wandb.init(
-        project='DriViSafe-Supervised',
-        name=f'{args.name}_{train_lb_size}LB_{test_lb_size}UL',
+        project='SceneUnderstanding',
+        name=f'{args.name}_{train_lb_size}LB_{val_size}VL',
         config=args
     )
     train_iter = iter(train_loader)
