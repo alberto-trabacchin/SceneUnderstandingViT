@@ -19,7 +19,7 @@ class Dreyeve(ImageFolder):
             img = self.transform(img)
         if self.target_transform is not None:
             target = self.target_transform(target)
-        return img, target
+        return img, target, index
     
     def get_info(self):
         classes = self.classes

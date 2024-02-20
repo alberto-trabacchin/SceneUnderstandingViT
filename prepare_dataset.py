@@ -6,6 +6,8 @@ from PIL import Image
 from torchvision.transforms import transforms
 import tqdm
 import shutil
+import collections
+import random
 
 
 parser = argparse.ArgumentParser()
@@ -13,11 +15,12 @@ parser.add_argument('--data-path', type=str, default='./data')
 parser.add_argument('--save-path', type=str, default='./dreyeve')
 parser.add_argument('--train-lb-size', type=int, default=10000)
 parser.add_argument('--val-size', type=int, default=1000)
-parser.add_argument('--test-size', default=200)
+parser.add_argument('--test-size', type=int, default=200)
 parser.add_argument('--batch-size', type=int, default=16)
-parser.add_argument('--seed', type=int)
+parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
-parser.add_argument('--resize', type=int, nargs='+', default=None, help='Resize images to this size (width, height)')
+parser.add_argument('--resize', type=int, nargs='+', default=[216, 384], help='Resize images to this size (width, height)')
+parser.add_argument('--conf-threshold', type=float, default=0.7)
 
 args = parser.parse_args()
 args.device = torch.device(args.device)
@@ -26,6 +29,7 @@ args.device = torch.device(args.device)
 def split_data(args):
     data_path = Path(args.data_path)
     images_paths = [str(p) for p in data_path.iterdir() if p.suffix == '.jpg']
+    random.shuffle(images_paths)
     train_lb_size = args.train_lb_size
     val_size = args.val_size
     test_size = args.test_size
@@ -71,14 +75,33 @@ def detect_targets(args, data_paths, mode):
             preds = model(data_batch)
             outputs.extend(preds)
         pbar.update(len(paths_batch))
-
+    
+    del model
     return outputs
 
 
 def save_data(args, data_paths, targets, mode):
     dang_path = Path(args.save_path) / f'{mode}' / 'dangerous'
     safe_path = Path(args.save_path) / f'{mode}' / 'safe'
+    if mode == 'val' or mode == 'test':
+        dang_count = targets.count(1)
+        safe_count = targets.count(0)
+        max_count = min(dang_count, safe_count)
+        reduced_targets = []
+        reduced_data_paths = []
+        for c in range(2):
+            count = 0
+            for p, t in zip(data_paths, targets):
+                if t == c and count < max_count:
+                    count += 1
+                    reduced_targets.append(t)
+                    reduced_data_paths.append(p)
+
+        data_paths = reduced_data_paths
+        targets = reduced_targets
+
     pbar = tqdm.tqdm(total=len(data_paths), desc=f'Saving {mode} data')
+
     if targets is not None:
         dang_path.mkdir(parents=True, exist_ok=True)
         safe_path.mkdir(parents=True, exist_ok=True)
@@ -115,7 +138,7 @@ def make_classes(args, data_paths, mode):
         scores = output['scores']
         dangerous = False
         for label, score in zip(labels, scores):
-            if label in lb2idx.values() and score > 0.5:
+            if label in lb2idx.values() and score > args.conf_threshold:
                 dangerous = True
                 break
         if dangerous:
@@ -128,6 +151,7 @@ def make_classes(args, data_paths, mode):
 if __name__ == '__main__':
     if Path(args.save_path).exists():
         shutil.rmtree(args.save_path)
+    random.seed(args.seed)
     train_lb_data, train_ul_data, val_data, test_data = split_data(args)
     train_lb_targets = make_classes(args, train_lb_data, mode='train_lb')
     val_targets = make_classes(args, val_data, mode='val')

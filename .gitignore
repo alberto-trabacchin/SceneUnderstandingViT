@@ -163,3 +163,4 @@ wandb/*
 data/*
 dreyeve*/*
 plots/*
+checkpoints/*
