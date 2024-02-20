@@ -8,6 +8,7 @@ import numpy as np
 import random
 import wandb
 import torch.nn.functional as F
+from pathlib import Path
 
 
 parser = argparse.ArgumentParser()
@@ -167,6 +168,12 @@ def train_loop(
             
             if student_val_acc.avg > student_top1_acc:
                 student_top1_acc = student_val_acc.avg
+                save_path = Path('checkpoints/')
+                save_path.mkdir(parents=True, exist_ok=True)
+                save_path = save_path / f'{args.name}_stud.pth'
+                torch.save(teacher.state_dict(), save_path)
+                wandb.save(f'{args.name}.pth')
+                print(f"--> Model saved at {save_path}")
 
             print(f"{step+1:4d}/{args.train_steps}  teac/valid/loss: {teacher_val_loss.avg:.4E} | teacher/valid/acc: {teacher_val_acc.avg:.4f}")
             print(f"{step+1:4d}/{args.train_steps}  stud/valid/loss: {student_val_loss.avg:.4E} | student/valid/acc: {student_val_acc.avg:.4f}")
