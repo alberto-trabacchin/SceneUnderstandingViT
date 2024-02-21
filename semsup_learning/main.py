@@ -139,15 +139,6 @@ def train_loop(
             teacher.eval()
             student.eval()
 
-            teacher_val_loss.reset()
-            student_val_loss.reset()
-            teacher_val_acc.reset()
-            student_val_acc.reset()
-            teacher_train_loss.reset()
-            teacher_train_acc.reset()
-            student_train_loss.reset()
-            student_train_acc.reset()
-
             with torch.inference_mode():
                 for val_batch in val_loader:
                     imgs, labels = val_batch
@@ -191,6 +182,15 @@ def train_loop(
                 "teacher/top1_acc": teacher_top1_acc,
                 "student/top1_acc": student_top1_acc
             }, step = step)
+
+            teacher_val_loss.reset()
+            student_val_loss.reset()
+            teacher_val_acc.reset()
+            student_val_acc.reset()
+            teacher_train_loss.reset()
+            teacher_train_acc.reset()
+            student_train_loss.reset()
+            student_train_acc.reset()
 
             pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
     
