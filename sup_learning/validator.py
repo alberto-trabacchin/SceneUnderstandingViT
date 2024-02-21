@@ -49,12 +49,22 @@ def outputs2targets(outputs, conf_threshold):
     return torch.tensor(targets)
 
 
-def validate(args, train_ul_dataset):
+def validate(args, train_ul_dataset, train_lb_dataset):
 
     def counter_limit(counter, limit):
         lim_safe = counter[0] >= limit
         lim_danger = counter[1] >= limit
         return lim_safe and lim_danger
+    
+    lb_names = [Path(s).name for s, _ in train_lb_dataset.samples]
+    ul_names = [Path(s).name for s, _ in train_ul_dataset.samples]
+    new_ul_idxs = []
+
+    for i, s in enumerate(ul_names):
+        if s not in lb_names:
+            new_ul_idxs.append(i)
+    train_ul_dataset.samples = [train_ul_dataset.samples[i] for i in new_ul_idxs]
+    train_ul_dataset.targets = [train_ul_dataset.targets[i] for i in new_ul_idxs]
     
     validator = retinanet_resnet50_fpn(weights = RetinaNet_ResNet50_FPN_Weights.DEFAULT)
     validator.to(args.device)
@@ -87,7 +97,7 @@ def validate(args, train_ul_dataset):
         if counter_limit(data_counter, preds_per_class):
             break
 
-        images, _, idxs = batch            
+        images, _, idxs = batch
         with torch.inference_mode():
             images = images.to(args.device)
             logits = model(images)
@@ -95,13 +105,13 @@ def validate(args, train_ul_dataset):
             outputs = validator(images)
             targets = outputs2targets(outputs, args.conf_threshold)
             equal_elements = preds.eq(targets)
-            indexes = torch.nonzero(equal_elements)
+            wrng_idxs = torch.nonzero(equal_elements)
         
         for c in range(0, 2):
             if data_counter[c] >= preds_per_class:
                 continue
-            new_idxs = [idxs[i] for i in indexes if targets[i] == c]
-            new_targets = [targets[i] for i in indexes if targets[i] == c]
+            new_idxs = [idxs[i] for i in wrng_idxs if targets[i] == c]
+            new_targets = [targets[i] for i in wrng_idxs if targets[i] == c]
             val_idxs.extend(new_idxs)
             val_targets.extend(new_targets)
             data_counter[c] += len(new_idxs)
@@ -112,32 +122,38 @@ def validate(args, train_ul_dataset):
     return val_idxs, val_targets
 
 
-def update_train_dataset(args, val_idxs, val_targets, train_ul_dataset, val_dataset):
+def update_train_dataset(args, val_idxs, val_targets, train_ul_dataset, train_lb_dataset):
     val_idxs = np.array(val_idxs, dtype = np.int32)
     val_paths = [train_ul_dataset.samples[i][0] for i in val_idxs]
-    old_val_paths = [s[0].split('/')[-1] for s in val_dataset.samples]
-    val_paths = [p.split('/')[-1] for p in val_paths]
-    diff_list = list(set(val_paths) - set(old_val_paths))
-    print(len(diff_list))
-    print(len(old_val_paths))
-    print(len(val_paths))
-    exit()
 
     for dp, t in zip(val_paths, val_targets):
         if t == 0:
-            shutil.move(dp, val_dataset.root + '/safe')
-            print(f'{dp} moved to {val_dataset.root}/safe')
+            shutil.move(dp, train_lb_dataset.root + '/safe')
+            print(f'{dp} moved to {train_lb_dataset.root}/safe')
         elif t == 1:
-            shutil.move(dp, val_dataset.root + '/dangerous')
-            print(f'{dp} moved to {val_dataset.root}/dangerous')
+            shutil.move(dp, train_lb_dataset.root + '/dangerous')
+            print(f'{dp} moved to {train_lb_dataset.root}/dangerous')
         else:
             raise ValueError(f'Invalid target: {t}')
-        
 
 
+def out_predictions(args, val_idxs, val_targets, train_ul_dataset, train_lb_dataset):
+    val_idxs = np.array(val_idxs, dtype = np.int32)
+    val_paths = [train_ul_dataset.samples[i][0] for i in val_idxs]
+    data_path = Path(args.data_path)
+
+    for dp, t in zip(val_paths, val_targets):
+        if t == 0:
+            shutil.move(dp, train_lb_dataset.root + '/safe')
+            print(f'{dp} moved to {train_lb_dataset.root}/safe')
+        elif t == 1:
+            shutil.move(dp, train_lb_dataset.root + '/dangerous')
+            print(f'{dp} moved to {train_lb_dataset.root}/dangerous')
+        else:
+            raise ValueError(f'Invalid target: {t}')
 
 
 if __name__ == "__main__":
-    _, train_ul_dataset, val_dataset, _ = data.get_dreyeve(args)
-    val_idxs, val_targets = validate(args, train_ul_dataset)
-    update_train_dataset(args, val_idxs, val_targets, train_ul_dataset, val_dataset)
+    train_lb_dataset, train_ul_dataset, _, _ = data.get_dreyeve(args)
+    val_idxs, val_targets = validate(args, train_ul_dataset, train_lb_dataset)
+    update_train_dataset(args, val_idxs, val_targets, train_ul_dataset, train_lb_dataset)
