@@ -9,6 +9,7 @@ import random
 import wandb
 import torch.nn.functional as F
 from pathlib import Path
+from termcolor import colored
 
 
 parser = argparse.ArgumentParser()
@@ -173,7 +174,7 @@ def train_loop(
                 save_path = save_path / f'{args.name}_stud.pth'
                 torch.save(teacher.state_dict(), save_path)
                 wandb.save(f'{args.name}.pth')
-                print(f"--> Model saved at {save_path}")
+                print(colored(f"--> Model saved at {save_path}", "yellow"))
 
             print(f"teac/valid/loss: {teacher_val_loss.avg:.4E} | teacher/valid/acc: {teacher_val_acc.avg:.4f}")
             print(f"stud/valid/loss: {student_val_loss.avg:.4E} | student/valid/acc: {student_val_acc.avg:.4f}")

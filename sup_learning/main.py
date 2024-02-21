@@ -8,6 +8,7 @@ import numpy as np
 import random
 import wandb
 from pathlib import Path
+from termcolor import colored
 
 
 parser = argparse.ArgumentParser()
@@ -100,7 +101,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
                 save_path = save_path / f'{args.name}.pth'
                 torch.save(model.state_dict(), save_path)
                 wandb.save(f'{args.name}.pth')
-                print(f"--> Model saved at {save_path}")
+                print(colored(f"--> Model saved at {save_path}", "yellow"))
             wandb.log({
                 "train/loss": train_loss.avg,
                 "train/acc": train_acc.avg,
