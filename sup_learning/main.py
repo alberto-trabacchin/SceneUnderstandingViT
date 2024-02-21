@@ -42,7 +42,7 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
-def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
+def train_loop(args, model, optimizer, criterion, train_loader, val_loader, scheduler):
     pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
     train_lb_size = train_loader.dataset.__len__()
     val_size = val_loader.dataset.__len__()
@@ -74,6 +74,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader):
         train_acc.update(accuracy(preds, labels))
         loss.backward()
         optimizer.step()
+        scheduler.step()
         pbar.update(1)
         pbar.set_description(f"{step+1:4d}/{args.train_steps}  train/loss: {train_loss.avg :.4E} | train/acc: {train_acc.avg:.4f}")
         
@@ -167,6 +168,11 @@ if __name__ == '__main__':
     criterion = torch.nn.CrossEntropyLoss(
         weight = torch.tensor(classes_weights).to(args.device)
     )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, 
+        T_max=args.train_steps, 
+        eta_min=0.0001
+    )
 
     train_loop(
         args = args,
@@ -174,5 +180,6 @@ if __name__ == '__main__':
         optimizer = optimizer,
         criterion = criterion,
         train_loader = train_lb_loader,
-        val_loader = val_loader
+        val_loader = val_loader,
+        scheduler = scheduler
     )

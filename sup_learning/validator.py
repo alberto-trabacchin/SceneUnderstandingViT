@@ -115,6 +115,14 @@ def validate(args, train_ul_dataset):
 def update_train_dataset(args, val_idxs, val_targets, train_ul_dataset, val_dataset):
     val_idxs = np.array(val_idxs, dtype = np.int32)
     val_paths = [train_ul_dataset.samples[i][0] for i in val_idxs]
+    old_val_paths = [s[0].split('/')[-1] for s in val_dataset.samples]
+    val_paths = [p.split('/')[-1] for p in val_paths]
+    diff_list = list(set(val_paths) - set(old_val_paths))
+    print(len(diff_list))
+    print(len(old_val_paths))
+    print(len(val_paths))
+    exit()
+
     for dp, t in zip(val_paths, val_targets):
         if t == 0:
             shutil.move(dp, val_dataset.root + '/safe')
