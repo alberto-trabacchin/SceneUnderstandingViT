@@ -18,7 +18,7 @@ for i in ./*/*; do echo $i; ls "$i" | wc -l; done
 To train MPL teacher-student:
 ```
 python semsup_learning/main.py \
---data-path=./data/dreyeve1k_sup \
+--data-path=./data/dreyeve1k_mpl \
 --name=SimpleViT-MPL \
 --batch-size=6 \
 --train-steps=500000 \
@@ -30,7 +30,7 @@ To train SL model:
 ```
 python sup_learning/main.py \
 --name=SimpleViT-SL \
---data-path=./data/dreyeve1k/ \
+--data-path=./data/dreyeve1k_sup \
 --batch-size=20 \
 --train-steps=10000 \
 --eval-steps=200 \
