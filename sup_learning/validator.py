@@ -22,6 +22,7 @@ parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--image-size', type=int, nargs='+', default=[216, 384], help='(height, width)')
 parser.add_argument('--num-classes', type=int, default=2)
 parser.add_argument('--conf-threshold', type=float, default=0.7)
+parser.add_argument('--validation-name', type=str, default='default')
 args = parser.parse_args()
 
 
@@ -119,34 +120,29 @@ def validate(args, train_ul_dataset, train_lb_dataset):
 
     val_idxs = [t.item() for t in val_idxs]
     val_targets = [t.item() for t in val_targets]
+
     return val_idxs, val_targets
 
 
 def update_train_dataset(args, val_idxs, val_targets, train_ul_dataset, train_lb_dataset):
     val_idxs = np.array(val_idxs, dtype = np.int32)
     val_paths = [train_ul_dataset.samples[i][0] for i in val_idxs]
+    data_path = args.data_path
+    pred_path = data_path + '/predictions/' + args.validation_name
+    if Path(pred_path).exists():
+        shutil.rmtree(pred_path)
+    Path(pred_path).mkdir(exist_ok=True, parents=True)
+    Path(pred_path + '/dangerous').mkdir(exist_ok=True, parents=True)
+    Path(pred_path + '/safe').mkdir(exist_ok=True, parents=True)
 
     for dp, t in zip(val_paths, val_targets):
+        fname = Path(dp).name
         if t == 0:
+            shutil.copy(dp, pred_path + f'/dangerous/{str(fname)}')
             shutil.move(dp, train_lb_dataset.root + '/safe')
             print(f'{dp} moved to {train_lb_dataset.root}/safe')
         elif t == 1:
-            shutil.move(dp, train_lb_dataset.root + '/dangerous')
-            print(f'{dp} moved to {train_lb_dataset.root}/dangerous')
-        else:
-            raise ValueError(f'Invalid target: {t}')
-
-
-def out_predictions(args, val_idxs, val_targets, train_ul_dataset, train_lb_dataset):
-    val_idxs = np.array(val_idxs, dtype = np.int32)
-    val_paths = [train_ul_dataset.samples[i][0] for i in val_idxs]
-    data_path = Path(args.data_path)
-
-    for dp, t in zip(val_paths, val_targets):
-        if t == 0:
-            shutil.move(dp, train_lb_dataset.root + '/safe')
-            print(f'{dp} moved to {train_lb_dataset.root}/safe')
-        elif t == 1:
+            shutil.copy(dp, pred_path + '/safe')
             shutil.move(dp, train_lb_dataset.root + '/dangerous')
             print(f'{dp} moved to {train_lb_dataset.root}/dangerous')
         else:
