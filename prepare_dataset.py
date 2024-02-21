@@ -111,10 +111,11 @@ def save_data(args, data_paths, targets, mode):
         dang_path.mkdir(parents=True, exist_ok=True)
         safe_path.mkdir(parents=True, exist_ok=True)
         for i, (p, t) in enumerate(zip(data_paths, targets)):
+            fname = Path(p).stem
             if t == 1:
-                save_path = dang_path / f'{i}.jpg'
+                save_path = dang_path / f'{fname}.jpg'
             else:
-                save_path = safe_path / f'{i}.jpg'
+                save_path = safe_path / f'{fname}.jpg'
             img = Image.open(p)
             if args.resize is not None:
                 img = img_transform(img)
@@ -125,7 +126,8 @@ def save_data(args, data_paths, targets, mode):
         class_path.mkdir(parents=True, exist_ok=True)
         for i, p in enumerate(data_paths):
             img = Image.open(p)
-            save_path = class_path / f'{i}.jpg'
+            fname = Path(p).stem
+            save_path = class_path / f'{fname}.jpg'
             if args.resize is not None:
                 img = img_transform(img)
             img.save(save_path)
