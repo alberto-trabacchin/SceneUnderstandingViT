@@ -47,6 +47,7 @@ class AverageMeter:
 def train_loop(
         args, teacher, student,
         teacher_optim, student_optim,
+        teacher_sched, student_sched,
         train_lb_loader, train_ul_loader, val_loader
 ):
     train_lb_iter = iter(train_lb_loader)
@@ -114,6 +115,7 @@ def train_loop(
         student_loss.backward()
         student_grad_2 = [p.grad.data.clone().detach() for p in student.parameters()]
         student_optim.step()
+        student_sched.step()
 
         mpl_coeff = sum([torch.dot(g_1.ravel(), g_2.ravel()).sum().detach().item() for g_1, g_2 in zip(student_grad_1, student_grad_2)])
 
@@ -129,6 +131,7 @@ def train_loop(
 
         teacher_loss.backward()
         teacher_optim.step()
+        teacher_sched.step()
         pbar.update(1)
         pbar.set_description(f"{step+1:4d}/{args.train_steps}  teac/train/loss: {teacher_train_loss.avg :.4E} | "
                              f"stud/train/loss: {student_train_loss.avg:.4E}")
@@ -261,6 +264,17 @@ if __name__ == '__main__':
     student_optim = torch.optim.Adam(student.parameters(), lr=args.lr)
     _, _, classes_weights = train_lb_dataset.get_info()
 
+    teacher_sched = torch.optim.lr_scheduler.CosineAnnealingLR(
+        teacher_optim, 
+        T_max=args.train_steps, 
+        eta_min=0.0001
+    )
+    student_sched = torch.optim.lr_scheduler.CosineAnnealingLR(
+        student_optim, 
+        T_max=args.train_steps, 
+        eta_min=0.0001
+    )
+
 
     train_loop(
         args = args,
@@ -268,6 +282,8 @@ if __name__ == '__main__':
         student = student,
         teacher_optim = teacher_optim,
         student_optim = student_optim,
+        teacher_sched = teacher_sched,
+        student_sched = student_sched,
         train_lb_loader = train_lb_loader,
         train_ul_loader = train_ul_loader,
         val_loader = val_loader
