@@ -109,7 +109,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
                 "val/acc": val_acc.avg,
                 "top1_acc": top1_acc
             }, step = step)
-            wandb.watch(models = model, log='all')
+            # wandb.watch(models = model, log='all')
             print(f'top1_acc: {top1_acc:.6f}\n')
             val_loss.reset()
             val_acc.reset()
@@ -158,10 +158,10 @@ if __name__ == '__main__':
         image_size = tuple(args.image_size),
         patch_size = 6,
         num_classes = args.num_classes,
-        dim = 64,
-        depth = 6,
-        heads = 8,
-        mlp_dim = 128
+        dim = 1024,
+        depth = 14,
+        heads = 16,
+        mlp_dim = 2048
     )
     model.to(args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
