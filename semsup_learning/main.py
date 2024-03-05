@@ -24,6 +24,7 @@ parser.add_argument('--workers', type=int, default=4)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--image-size', type=int, nargs='+', default=[216, 384], help='(height, width)')
+parser.add_argument('--simple-model', action='store_true')
 args = parser.parse_args()
 
 
