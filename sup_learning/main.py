@@ -154,6 +154,16 @@ if __name__ == '__main__':
         num_workers = args.workers
     )
 
+    # model = SimpleViT ( 
+    #     image_size = tuple(args.image_size),
+    #     patch_size = 6,
+    #     num_classes = args.num_classes,
+    #     dim = 64,
+    #     depth = 6,
+    #     heads = 8,
+    #     mlp_dim = 128 
+    # )
+
     model = SimpleViT(
         image_size = tuple(args.image_size),
         patch_size = 6,
@@ -163,6 +173,7 @@ if __name__ == '__main__':
         heads = 16,
         mlp_dim = 2048
     )
+
     model.to(args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     _, _, classes_weights = train_lb_dataset.get_info()
