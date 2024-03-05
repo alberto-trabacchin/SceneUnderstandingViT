@@ -1,7 +1,7 @@
 import data
 import argparse
 from torch.utils.data import DataLoader
-from vit_pytorch import SimpleViT
+from vit_pytorch import SimpleViT, ViT
 import torch
 import tqdm
 import numpy as np
@@ -244,20 +244,42 @@ if __name__ == '__main__':
         image_size = tuple(args.image_size),
         patch_size = 6,
         num_classes = args.num_classes,
-        dim = 64,
-        depth = 6,
-        heads = 8,
-        mlp_dim = 128
+        dim = 1024,
+        depth = 14,
+        heads = 16,
+        mlp_dim = 2048
     )
     student = SimpleViT(
         image_size = tuple(args.image_size),
         patch_size = 6,
         num_classes = args.num_classes,
-        dim = 64,
-        depth = 6,
-        heads = 8,
-        mlp_dim = 128
+        dim = 1024,
+        depth = 14,
+        heads = 16,
+        mlp_dim = 2048
     )
+
+
+    # teacher = SimpleViT(
+    #     image_size = tuple(args.image_size),
+    #     patch_size = 6,
+    #     num_classes = args.num_classes,
+    #     dim = 64,
+    #     depth = 6,
+    #     heads = 8,
+    #     mlp_dim = 128
+    # )
+    # student = SimpleViT(
+    #     image_size = tuple(args.image_size),
+    #     patch_size = 6,
+    #     num_classes = args.num_classes,
+    #     dim = 64,
+    #     depth = 6,
+    #     heads = 8,
+    #     mlp_dim = 128
+    # )
+
+
     teacher.to(args.device)
     student.to(args.device)
     teacher_optim = torch.optim.Adam(teacher.parameters(), lr=args.lr)
