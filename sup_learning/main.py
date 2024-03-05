@@ -23,6 +23,7 @@ parser.add_argument('--workers', type=int, default=4)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--image-size', type=int, nargs='+', default=[216, 384], help='Image size (height, width)')
+parser.add_argument('--simple', action='store_true', help='Use a simple ViT model')
 args = parser.parse_args()
 
 
@@ -154,25 +155,27 @@ if __name__ == '__main__':
         num_workers = args.workers
     )
 
-    # model = SimpleViT ( 
-    #     image_size = tuple(args.image_size),
-    #     patch_size = 6,
-    #     num_classes = args.num_classes,
-    #     dim = 64,
-    #     depth = 6,
-    #     heads = 8,
-    #     mlp_dim = 128 
-    # )
+    if args.simple:
+        model = SimpleViT ( 
+            image_size = tuple(args.image_size),
+            patch_size = 6,
+            num_classes = args.num_classes,
+            dim = 64,
+            depth = 6,
+            heads = 8,
+            mlp_dim = 128 
+        )
 
-    model = SimpleViT(
-        image_size = tuple(args.image_size),
-        patch_size = 6,
-        num_classes = args.num_classes,
-        dim = 1024,
-        depth = 14,
-        heads = 16,
-        mlp_dim = 2048
-    )
+    else:
+        model = SimpleViT(
+            image_size = tuple(args.image_size),
+            patch_size = 6,
+            num_classes = args.num_classes,
+            dim = 1024,
+            depth = 14,
+            heads = 16,
+            mlp_dim = 2048
+        )
 
     model.to(args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
