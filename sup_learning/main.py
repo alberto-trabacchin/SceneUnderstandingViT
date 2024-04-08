@@ -22,8 +22,7 @@ parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--workers', type=int, default=4)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
 parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--image-size', type=int, nargs='+', default=[216, 384], help='Image size (height, width)')
-parser.add_argument('--simple', action='store_true', help='Use a simple ViT model')
+parser.add_argument('--image-size', type=int, nargs='+', default=[900, 1600], help='Image size (height, width)')
 args = parser.parse_args()
 
 
@@ -67,7 +66,8 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
         except:
             train_iter = iter(train_loader)
             batch = next(train_iter)
-        imgs, labels, idxs = batch
+
+        imgs, labels = batch
         imgs, labels = imgs.to(args.device), labels.to(args.device)
         optimizer.zero_grad()
         preds = model(imgs)
@@ -135,9 +135,10 @@ def accuracy(preds, labels):
 
 
 if __name__ == '__main__':
-    train_lb_dataset, train_ul_dataset, val_dataset, test_dataset = data.get_dreyeve(args)
-    train_lb_loader = DataLoader(
-        dataset = train_lb_dataset,
+    # train_lb_dataset, train_ul_dataset, val_dataset, test_dataset = data.get_dreyeve(args)
+    train_dataset, val_dataset = data.get_nuimages(args)
+    train_loader = DataLoader(
+        dataset = train_dataset,
         batch_size = args.batch_size,
         shuffle = True,
         num_workers = args.workers
@@ -148,41 +149,24 @@ if __name__ == '__main__':
         shuffle = False,
         num_workers = args.workers
     )
-    test_loader = DataLoader(
-        dataset = test_dataset,
-        batch_size = args.batch_size,
-        shuffle = False,
-        num_workers = args.workers
+
+    model = SimpleViT ( 
+        image_size = tuple(args.image_size),
+        patch_size = 4,
+        num_classes = args.num_classes,
+        dim = 64,
+        depth = 6,
+        heads = 8,
+        mlp_dim = 128
     )
-
-    if args.simple:
-        model = SimpleViT ( 
-            image_size = tuple(args.image_size),
-            patch_size = 6,
-            num_classes = args.num_classes,
-            dim = 64,
-            depth = 6,
-            heads = 8,
-            mlp_dim = 128 
-        )
-
-    else:
-        model = SimpleViT(
-            image_size = tuple(args.image_size),
-            patch_size = 6,
-            num_classes = args.num_classes,
-            dim = 1024,
-            depth = 14,
-            heads = 16,
-            mlp_dim = 2048
-        )
 
     model.to(args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    _, _, classes_weights = train_lb_dataset.get_info()
-    criterion = torch.nn.CrossEntropyLoss(
-        weight = torch.tensor(classes_weights).to(args.device)
-    )
+    # _, _, classes_weights = train_lb_dataset.get_info()
+    # criterion = torch.nn.CrossEntropyLoss(
+    #     weight = torch.tensor(classes_weights).to(args.device)
+    # )
+    criterion = torch.nn.CrossEntropyLoss()
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, 
         T_max=args.train_steps, 
@@ -194,7 +178,7 @@ if __name__ == '__main__':
         model = model,
         optimizer = optimizer,
         criterion = criterion,
-        train_loader = train_lb_loader,
+        train_loader = train_loader,
         val_loader = val_loader,
         scheduler = scheduler
     )
