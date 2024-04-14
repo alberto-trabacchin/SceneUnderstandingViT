@@ -1,19 +1,22 @@
-import data
 import argparse
-from torch.utils.data import DataLoader
-from vit_pytorch import SimpleViT
 import torch
 import tqdm
-import numpy as np
-import random
 import wandb
 from pathlib import Path
 from termcolor import colored
+import matplotlib.pyplot as plt
+from nuimages import NuImages
+import numpy as np
+import random
+from torch.utils.data import DataLoader
+from data import get_nuimages
+from vit_pytorch import SimpleViT
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, default='default')
-parser.add_argument('--data-path', type=str, default='./dreve')
+parser.add_argument('--data-path', type=str, default='/home/alberto/datasets/nuimages')
+parser.add_argument('--clear-labels', action='store_true')
 parser.add_argument('--batch-size', type=int, default=32)
 parser.add_argument('--train-steps', type=int, default=10000)
 parser.add_argument('--eval-steps', type=int, default=500)
@@ -22,7 +25,7 @@ parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--workers', type=int, default=4)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
 parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--image-size', type=int, nargs='+', default=[900, 1600], help='Image size (height, width)')
+parser.add_argument('--resize', type=int, required=True, help='Image size (height, width)')
 args = parser.parse_args()
 
 
@@ -85,7 +88,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
             pbar = tqdm.tqdm(total=len(val_loader), position=0, leave=True, desc="Validating...")
             model.eval()
             for val_batch in val_loader:
-                imgs, labels, idxs = val_batch
+                imgs, labels = val_batch
                 imgs, labels = imgs.to(args.device), labels.to(args.device)
                 with torch.inference_mode():
                     preds = model(imgs)
@@ -136,7 +139,10 @@ def accuracy(preds, labels):
 
 if __name__ == '__main__':
     # train_lb_dataset, train_ul_dataset, val_dataset, test_dataset = data.get_dreyeve(args)
-    train_dataset, val_dataset = data.get_nuimages(args)
+    
+    train_dataset, val_dataset = get_nuimages(args)
+    train_dataset.print_info()
+    exit()
     train_loader = DataLoader(
         dataset = train_dataset,
         batch_size = args.batch_size,
@@ -150,9 +156,11 @@ if __name__ == '__main__':
         num_workers = args.workers
     )
 
+    sample = train_dataset[0]
+
     model = SimpleViT ( 
-        image_size = tuple(args.image_size),
-        patch_size = 4,
+        image_size = args.resize,
+        patch_size = 20,
         num_classes = args.num_classes,
         dim = 64,
         depth = 6,

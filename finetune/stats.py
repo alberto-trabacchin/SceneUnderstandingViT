@@ -3,6 +3,13 @@ from nuimages import NuImages
 import tqdm
 import matplotlib.pyplot as plt
 from collections import Counter
+import itertools
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--data-path", type=str, default="./data")
+parser.add_argument("--version", type=str, default="v1.0-train")
+args = parser.parse_args()
 
 
 class NuDataset(Dataset):
@@ -76,73 +83,84 @@ def count_frames(dataset, categories):
 def get_data_info(dataset, categories):
     nuim = dataset.nuim
     pbar = tqdm.tqdm(total = len(nuim.sample), desc = "Getting data info")
-    counter = []
+    all_obj_names = []
+    counter = {
+        "safe": 0,
+        "dangerous": 0
+    }
     for s in nuim.sample:
         sd_token = s["key_camera_token"]
         obj_annots = [o for o in nuim.object_ann if o["sample_data_token"] == sd_token]
-        cat_names = [nuim.get("category", o["category_token"])["name"] for o in obj_annots]
-        if not cat_names:
-            cat_names = ["background"]
-        tmp = []
-        for cn in cat_names:
-            for ct in categories:
-                if (ct in cn) or (cn == "background"):
-                    tmp.append(cn)
-        counter.append(list(set(tmp)))
+        obj_names = [nuim.get("category", o["category_token"])["name"] for o in obj_annots]
+        cat_detected = {c: False for c in categories}
+        for c in categories:
+            if any(c in o for o in obj_names):
+                cat_detected[c] = True
+
+        if all(cat_detected.values()):
+            counter["dangerous"] += 1
+        else:
+            counter["safe"] += 1
+        
         pbar.update(1)
     pbar.close()
+    # cat_counter = count_unique_targets(all_cat_names, categories)
     return counter
 
 
-def plot_stats(count_targets, dang_counter):
-    fig, ax = plt.subplots(1, 1, figsize = (14, 8))
+def count_unique_targets(obj_annots, ref_categories):
+    counter = {c: 0 for c in ref_categories}
+    counter["safe"] = 0
+    counter["dangerous"] = 0
+    for ann in obj_annots:
+        bool_counter = {c: False for c in ref_categories}
+        for rc in ref_categories:
+            if (all (rc in a for a in ann)) and not bool_counter[rc]:
+                counter[rc] += 1
+                bool_counter[rc] = True
+        if not any(bool_counter.values()):
+            counter["safe"] += 1
+
+    counter["dangerous"] = len(obj_annots) - counter["safe"]
+    return counter
+
+
+def plot_stats(counter):
+    fig, ax = plt.subplots(1, 1, figsize = (12, 3))
     ax.set_xscale("log")
     ax.grid(which="major", axis="x")
 
-    x = list(count_targets.keys())
-    x.extend(list(dang_counter.keys()))
-    y = list(count_targets.values())
-    y.extend(list(dang_counter.values()))
+    x = list(counter.keys())
+    y = list(counter.values())
 
     barlist = ax.barh(x, y)
     for i, c in enumerate(x):
         ax.text(y[i], i, str(y[i]), va = "center")
-        if c in count_targets:
-            barlist[i].set_color("darkblue")
-        else:
+        if c == "safe" or c == "dangerous":
             barlist[i].set_color("darkred")
+        else:
+            barlist[i].set_color("darkblue")
 
     fig.tight_layout()
-    fig.savefig("stats_mini.png", dpi = 600)
+    # fig.savefig(f"{args.version}.png", dpi = 600)
 
 
 if __name__ == "__main__":
     dataset = NuDataset(
-        path = "/home/alberto/datasets/nuimages/",
-        version = "v1.0-mini",
+        path = args.data_path,
+        version = args.version,
         transform = None,
         verbose = False
     )
     categories = [
         "human",
-        "vehicle",
-        "static_object.bicycle_rack",
+        "vehicle"
     ]
-    dang_counter = {
-        "safe": 0,
-        "dangerous": 0
-    }
+
+    print([c["name"] for c in dataset.nuim.])
+    exit()
+
     counter = get_data_info(dataset, categories)
-    for c in counter:
-        if c == ["background"]:
-            dang_counter["safe"] += 1
-        else:
-            dang_counter["dangerous"] += 1
-    flat_counter = [
-        c
-        for sublist in counter
-        for c in sublist
-    ]
-    count_targets = dict(Counter(flat_counter))
-    plot_stats(count_targets, dang_counter)
-    plt.show()
+    print(counter)
+    # plot_stats(counter)
+    # plt.show()
