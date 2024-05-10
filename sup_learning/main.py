@@ -9,7 +9,7 @@ from nuimages import NuImages
 import numpy as np
 import random
 from torch.utils.data import DataLoader
-from data import get_nuimages
+from data import get_nuimages, get_dreyeve
 from vit_pytorch import SimpleViT
 
 
@@ -70,7 +70,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
             train_iter = iter(train_loader)
             batch = next(train_iter)
 
-        imgs, labels = batch
+        imgs, labels, _ = batch
         imgs, labels = imgs.to(args.device), labels.to(args.device)
         optimizer.zero_grad()
         preds = model(imgs)
@@ -88,7 +88,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
             pbar = tqdm.tqdm(total=len(val_loader), position=0, leave=True, desc="Validating...")
             model.eval()
             for val_batch in val_loader:
-                imgs, labels = val_batch
+                imgs, labels, _ = val_batch
                 imgs, labels = imgs.to(args.device), labels.to(args.device)
                 with torch.inference_mode():
                     preds = model(imgs)
@@ -138,13 +138,12 @@ def accuracy(preds, labels):
 
 
 if __name__ == '__main__':
+    set_seeds(args.seed)
     # train_lb_dataset, train_ul_dataset, val_dataset, test_dataset = data.get_dreyeve(args)
     
-    train_dataset, val_dataset = get_nuimages(args)
-    train_dataset.print_info()
-    exit()
+    train_lb_dataset, _, val_dataset, test_dataset = get_dreyeve(args)
     train_loader = DataLoader(
-        dataset = train_dataset,
+        dataset = train_lb_dataset,
         batch_size = args.batch_size,
         shuffle = True,
         num_workers = args.workers
@@ -155,26 +154,29 @@ if __name__ == '__main__':
         shuffle = False,
         num_workers = args.workers
     )
-
-    sample = train_dataset[0]
+    test_loader = DataLoader(
+        dataset = test_dataset,
+        batch_size = args.batch_size,
+        shuffle = False,
+        num_workers = args.workers
+    )
 
     model = SimpleViT ( 
         image_size = args.resize,
         patch_size = 20,
         num_classes = args.num_classes,
-        dim = 64,
-        depth = 6,
-        heads = 8,
+        dim = 128,
+        depth = 2,
+        heads = 2,
         mlp_dim = 128
     )
 
     model.to(args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    # _, _, classes_weights = train_lb_dataset.get_info()
-    # criterion = torch.nn.CrossEntropyLoss(
-    #     weight = torch.tensor(classes_weights).to(args.device)
-    # )
-    criterion = torch.nn.CrossEntropyLoss()
+    _, _, classes_weights = train_lb_dataset.get_info()
+    criterion = torch.nn.CrossEntropyLoss(
+        weight = torch.tensor(classes_weights).to(args.device)
+    )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, 
         T_max=args.train_steps, 
