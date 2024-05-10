@@ -19,7 +19,8 @@ parser.add_argument('--test-size', type=int, default=200)
 parser.add_argument('--batch-size', type=int, default=16)
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
-parser.add_argument('--resize', type=int, nargs='+', default=[216, 384], help='Resize images to this size (width, height)')
+# parser.add_argument('--resize', type=int, nargs='+', default=[216, 384], help='Resize images to this size (width, height)')
+parser.add_argument('--resize', type=int, default=300, help='Resize images to this size (resize, resize)')
 parser.add_argument('--conf-threshold', type=float, default=0.7)
 
 args = parser.parse_args()
@@ -52,7 +53,7 @@ def detect_targets(args, data_paths, mode):
     model.eval()
     if args.resize is not None:
         img_transform = transforms.Compose([
-            transforms.Resize(size=tuple(args.resize), antialias=True),
+            transforms.Resize(size=(args.resize, args.resize), antialias=True),
             transforms.ToTensor()
         ])
     else:
@@ -85,7 +86,7 @@ def save_data(args, data_paths, targets, mode):
     safe_path = Path(args.save_path) / f'{mode}' / 'safe'
     if args.resize is not None:
         img_transform = transforms.Compose([
-            transforms.Resize(size=tuple(args.resize), antialias=True),
+            transforms.Resize(size=(args.resize, args.resize), antialias=True),
         ])
 
     if mode == 'val' or mode == 'test':

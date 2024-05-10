@@ -23,7 +23,7 @@ parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--workers', type=int, default=4)
 parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
 parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--image-size', type=int, nargs='+', default=[216, 384], help='(height, width)')
+parser.add_argument('--resize', type=int, default=400, help='(height, width)')
 parser.add_argument('--simple', action='store_true')
 args = parser.parse_args()
 
@@ -215,6 +215,7 @@ def accuracy(preds, labels):
 
 
 if __name__ == '__main__':
+    set_seeds(args.seed)
     train_lb_dataset, train_ul_dataset, val_dataset, test_dataset = data.get_dreyeve(args)
     train_lb_loader = DataLoader(
         dataset = train_lb_dataset,
@@ -241,47 +242,24 @@ if __name__ == '__main__':
         num_workers = args.workers
     )
 
-
-    if args.simple:
-        teacher = SimpleViT(
-            image_size = tuple(args.image_size),
-            patch_size = 6,
-            num_classes = args.num_classes,
-            dim = 64,
-            depth = 6,
-            heads = 8,
-            mlp_dim = 128
-        )
-        student = SimpleViT(
-            image_size = tuple(args.image_size),
-            patch_size = 6,
-            num_classes = args.num_classes,
-            dim = 64,
-            depth = 6,
-            heads = 8,
-            mlp_dim = 128
-        )
-
-    else:
-        teacher = SimpleViT(
-            image_size = tuple(args.image_size),
-            patch_size = 6,
-            num_classes = args.num_classes,
-            dim = 1024,
-            depth = 14,
-            heads = 16,
-            mlp_dim = 2048
-        )
-        student = SimpleViT(
-            image_size = tuple(args.image_size),
-            patch_size = 6,
-            num_classes = args.num_classes,
-            dim = 1024,
-            depth = 14,
-            heads = 16,
-            mlp_dim = 2048
-        )
-
+    teacher = SimpleViT ( 
+        image_size = args.resize,
+        patch_size = 20,
+        num_classes = args.num_classes,
+        dim = 128,
+        depth = 2,
+        heads = 2,
+        mlp_dim = 128
+    )
+    student = SimpleViT ( 
+        image_size = args.resize,
+        patch_size = 20,
+        num_classes = args.num_classes,
+        dim = 128,
+        depth = 2,
+        heads = 2,
+        mlp_dim = 128
+    )
 
     teacher.to(args.device)
     student.to(args.device)
