@@ -14,16 +14,50 @@ def parse_args():
     return parser.parse_args()
 
 
-class BDD100k(ImageFolder):
-    def __init__(self, mode, root, lab_size=None, transform=None, target_transform=None):
-        self.mode = mode
-        self.root = str(root) + '/' + mode
-        super(BDD100k, self).__init__(self.root, transform, target_transform)
+# class BDD100k(ImageFolder):
+#     def __init__(self, mode, root, lab_size=None, transform=None, target_transform=None):
+#         self.mode = mode
+#         self.root = str(root) + '/' + mode
+#         super(BDD100k, self).__init__(self.root, transform, target_transform)
 
+#     def get_info(self):
+#         classes = self.classes
+#         classes_count = [0] * len(classes)
+#         for _, label in self.samples:
+#             classes_count[label] += 1
+#         sum_count = sum(classes_count)
+#         classes_weights = [count / sum_count for count in classes_count]
+#         assert(sum(classes_weights) == 1)
+#         return classes, classes_count, classes_weights
+    
+
+class BDD100k(Dataset):
+    def __init__(self, mode, root, transform, target_transform = None):
+        self.root = str(root) + '/' + mode
+        self.transform = transform
+        self.target_transform = target_transform
+        self.data = []
+        self.targets = []
+        for img in Path(self.root + "/safe").rglob('*.jpg'):
+            self.data.append(img)
+            self.targets.append(0)
+        for img in Path(self.root + "/dangerous").rglob('*.jpg'):
+            self.data.append(img)
+            self.targets.append(1)
+        
+    def __getitem__(self, index):
+        img = Image.open(self.data[index])
+        if self.transform is not None:
+            img = self.transform(img)
+        return img, self.targets[index]
+    
+    def __len__(self):
+        return len(self.data)
+    
     def get_info(self):
-        classes = self.classes
-        classes_count = [0] * len(classes)
-        for _, label in self.samples:
+        classes = ['safe', 'dangerous']
+        classes_count = [0, 0]
+        for label in self.targets:
             classes_count[label] += 1
         sum_count = sum(classes_count)
         classes_weights = [count / sum_count for count in classes_count]
