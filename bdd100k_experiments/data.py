@@ -32,8 +32,8 @@ class BDD100k(ImageFolder):
     
 
 class BDD100k_UL(Dataset):
-    def __init__(self, root, transform=None, target_transform=None):
-        self.root = root
+    def __init__(self, root, mode, transform=None, target_transform=None):
+        self.root = str(root) + '/' + mode
         self.transform = transform
         self.target_transform = target_transform
         self.data = list(Path(self.root).rglob('*.jpg'))
@@ -54,14 +54,17 @@ def get_bdd100k(args):
         v2.ToDtype(torch.float32, scale = True)
     ])
     train_dataset = BDD100k(root=args.data_path, mode='train', transform=transform)
-    unlabeled_dataset = BDD100k_UL(root=args.data_path, transform=transform)
+    unlabeled_dataset = BDD100k_UL(root=args.data_path, mode='unlabeled', transform=transform)
     val_dataset = BDD100k(root=args.data_path, mode='val', transform=transform)
-    return train_dataset, val_dataset, unlabeled_dataset
+    test_dataset = BDD100k_UL(root=args.data_path, mode='test', transform=transform)
+    return train_dataset, val_dataset, test_dataset, unlabeled_dataset
     
 
 if __name__ == "__main__":
     args = parse_args()
-    train_dataset, val_dataset, unlabeled_dataset = get_bdd100k(args)
+    train_dataset, val_dataset, test_dataset, unlabeled_dataset = get_bdd100k(args)
+    print(train_dataset.class_to_idx)
+    exit()
     print(unlabeled_dataset[0])
     
     

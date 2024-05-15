@@ -1,6 +1,7 @@
 from pathlib import Path
 import argparse
 from torchvision.models.detection import retinanet_resnet50_fpn_v2, RetinaNet_ResNet50_FPN_V2_Weights
+from ultralytics import YOLO
 import torch
 from PIL import Image
 from torchvision.transforms import transforms
@@ -8,6 +9,7 @@ import tqdm
 import shutil
 import collections
 import random
+import cv2 as cv
 
 
 parser = argparse.ArgumentParser()
@@ -48,18 +50,19 @@ def split_data(args):
 
 
 def detect_targets(args, data_paths, mode):
-    model = retinanet_resnet50_fpn_v2(weights = RetinaNet_ResNet50_FPN_V2_Weights.DEFAULT)
-    model = model.to(args.device)
-    model.eval()
-    if args.resize is not None:
-        img_transform = transforms.Compose([
-            transforms.Resize(size=(args.resize, args.resize), antialias=True),
-            transforms.ToTensor()
-        ])
-    else:
-        img_transform = transforms.Compose([
-            transforms.ToTensor()
-        ])
+    # model = retinanet_resnet50_fpn_v2(weights = RetinaNet_ResNet50_FPN_V2_Weights.DEFAULT)
+    model = YOLO("yolov8x.pt", verbose=False)
+    # model = model.to(args.device)
+    # model.eval()
+    # if args.resize is not None:
+    #     img_transform = transforms.Compose([
+    #         transforms.Resize(size=(args.resize, args.resize), antialias=True),
+    #         transforms.ToTensor()
+    #     ])
+    # else:
+    #     img_transform = transforms.Compose([
+    #         transforms.ToTensor()
+    #     ])
     outputs = []
     pbar = tqdm.tqdm(total=len(data_paths), desc=f'Processing {mode} data')
   
@@ -68,12 +71,15 @@ def detect_targets(args, data_paths, mode):
         data_batch = []
 
         for p in paths_batch:
-            img = Image.open(p)
-            img = img_transform(img)
-            data_batch.append(img)
+            img = cv.imread(p)
+            # img = img_transform(img)
+            data_batch.append(torch.FloatTensor(img) / 255.0)
+
+
         data_batch = torch.stack(data_batch).to(args.device)
         with torch.inference_mode():
-            preds = model(data_batch)
+            # preds = model(data_batch)
+            preds = model.predict(source=paths_batch, classes = [0, 2, 7])
             outputs.extend(preds)
         pbar.update(len(paths_batch))
     
@@ -145,14 +151,28 @@ def make_classes(args, data_paths, mode):
         "truck": 8
     }
     outputs = detect_targets(args, data_paths, mode)
+    # for output in outputs:
+    #     labels = output['labels']
+    #     scores = output['scores']
+    #     dangerous = False
+    #     for label, score in zip(labels, scores):
+    #         if label in lb2idx.values() and score > args.conf_threshold:
+    #             dangerous = True
+    #             break
+    #     if dangerous:
+    #         targets.append(1)
+    #     else:
+    #         targets.append(0)
+
     for output in outputs:
-        labels = output['labels']
-        scores = output['scores']
+        boxes = output[0].boxes.xyxy
+        confs = output[0].boxes.conf
         dangerous = False
-        for label, score in zip(labels, scores):
-            if label in lb2idx.values() and score > args.conf_threshold:
-                dangerous = True
-                break
+        for box, conf in zip(boxes, confs):
+            if conf > args.conf_threshold:
+                if not (box[1] > 730 and box[2] - box[0] > 1200):
+                    dangerous = True
+                    break
         if dangerous:
             targets.append(1)
         else:
