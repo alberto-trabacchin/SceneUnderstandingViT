@@ -41,6 +41,18 @@ def is_dangerous(frame_ann):
 
 def save_data(args, annotations, mode = "train"):
     print(f"Preparing {mode} data...")
+
+    if mode == "test":
+        Path(f"{args.save_path}/{mode}").mkdir(parents=True, exist_ok=True)
+        pbar = tqdm(total=len(list(Path(f"{args.data_path}/images/100k/{mode}").rglob("*.jpg"))), position=0, leave=True)
+        for img_path in Path(f"{args.data_path}/images/100k/{mode}").rglob("*.jpg"):
+            img = cv.imread(str(img_path))
+            img = cv.resize(img, (args.resize, args.resize))
+            cv.imwrite(f"{args.save_path}/{mode}/{img_path.name}", img)
+            pbar.update(1)
+        pbar.close()
+        return
+
     pbar = tqdm(total=len(annotations), position=0, leave=True)
     Path(f"{args.save_path}/{mode}/dangerous").mkdir(parents=True, exist_ok=True)
     Path(f"{args.save_path}/{mode}/safe").mkdir(parents=True, exist_ok=True)
@@ -84,3 +96,4 @@ if __name__ == "__main__":
     val_labels = get_labels(args, "val")
     save_data(args, train_labels, "train")
     save_data(args, val_labels, "val")
+    save_data(args, None, "test")
