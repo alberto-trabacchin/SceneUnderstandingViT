@@ -261,6 +261,11 @@ if __name__ == '__main__':
         mlp_dim = 128
     )
 
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        teacher = torch.nn.DataParallel(teacher)
+        student = torch.nn.DataParallel(student)
+
     teacher.to(args.device)
     student.to(args.device)
     teacher_optim = torch.optim.Adam(teacher.parameters(), lr=args.lr)
