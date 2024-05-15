@@ -67,6 +67,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
     train_f1 = AverageMeter()
     val_f1 = AverageMeter()
     top1_acc = 0
+    top_f1 = 0
 
     for step in range(args.train_steps):
         model.train()
@@ -118,8 +119,8 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
                                  f"VALID/rec: {val_rec.avg:.4f} | "
                                  f"VALID/f1: {val_f1.avg:.4f}")
             pbar.close()
-            if val_acc.avg > top1_acc:
-                top1_acc = val_acc.avg
+            if val_f1.avg > top_f1:
+                top_f1 = val_f1.avg
                 save_path = Path('checkpoints/')
                 save_path.mkdir(parents=True, exist_ok=True)
                 save_path = save_path / f'{args.name}.pth'
@@ -134,7 +135,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
                 "top1_acc": top1_acc
             }, step = step)
             # wandb.watch(models = model, log='all')
-            print(f'top1_acc: {top1_acc:.6f}\n')
+            print(f'top_f1: {top_f1:.6f}\n')
             val_loss.reset()
             val_acc.reset()
             train_loss.reset()
