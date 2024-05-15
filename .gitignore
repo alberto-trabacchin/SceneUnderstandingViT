@@ -164,3 +164,7 @@ data/*
 dreyeve*/*
 plots/*
 checkpoints/*
+
+datasets/*
+
+bdd100k_experiments/datasets/*
