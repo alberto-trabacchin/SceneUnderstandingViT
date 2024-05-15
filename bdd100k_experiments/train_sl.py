@@ -201,6 +201,10 @@ if __name__ == '__main__':
         mlp_dim = 128
     )
 
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = torch.nn.DataParallel(model)
+
     model.to(args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     _, _, classes_weights = train_lb_dataset.get_info()
