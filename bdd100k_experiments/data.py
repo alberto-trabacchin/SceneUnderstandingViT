@@ -36,6 +36,10 @@ class BDD100k(Dataset):
         self.root = str(root) + '/' + mode
         self.transform = transform
         self.target_transform = target_transform
+        self.class2idx = {
+            "safe": 0,
+            "dangerous": 1
+        }
         self.data = []
         self.targets = []
         for img in Path(self.root + "/safe").rglob('*.jpg'):

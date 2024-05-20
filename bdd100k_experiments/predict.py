@@ -12,7 +12,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-path', type=str, default='./bdd_1k')
     parser.add_argument('--model-path', type=str, default='./models')
-    parser.add_argument('--img-size', type=int, required=True)
+    parser.add_argument('--resize', type=int, required=True)
     return parser.parse_args()
 
 
@@ -45,16 +45,15 @@ if __name__ == "__main__":
     # Note: dangerous = 0, safe = 1
     args = parse_args()
     model = SimpleViT ( 
-        image_size = args.img_size,
+        image_size = args.resize,
         patch_size = 20,
         num_classes = 2,
-        dim = 512,
-        depth = 4,
-        heads = 4,
-        mlp_dim = 128
+        dim = 12,
+        depth = 1,
+        heads = 1,
+        mlp_dim = 12
     )
     _, val_dataset, test_dataset, _ = data.get_bdd100k(args)
-    class2idx = val_dataset.class_to_idx
     with open(f"{args.model_path}", "rb") as f:
         model.load_state_dict(torch.load(f))
-    save_predictions(model, test_dataset, class2idx)
+    save_predictions(model, test_dataset, val_dataset.class2idx)
