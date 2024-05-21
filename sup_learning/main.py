@@ -46,8 +46,115 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
+def accuracy(preds, labels):
+    tp = (preds.argmax(dim=1) & labels).float().sum()
+    tn = ((1 - preds.argmax(dim=1)) & (1 - labels)).float().sum()
+    fp = (preds.argmax(dim=1) & (1 - labels)).float().sum()
+    fn = ((1 - preds.argmax(dim=1)) & labels).float().sum()
+    acc = (tp + tn) / (tp + tn + fp + fn + 1e-8)
+    conf_mat = {
+        'tp': tp,
+        'tn': tn,
+        'fp': fp,
+        'fn': fn
+    }
+    return acc, conf_mat
+
+def precision(preds, labels):
+    tp = (preds.argmax(dim=1) & labels).float().sum()
+    fp = (preds.argmax(dim=1) & (1 - labels)).float().sum()
+    return tp / (tp + fp + 1e-8)
+
+def recall(preds, labels):
+    tp = (preds.argmax(dim=1) & labels).float().sum()
+    fn = ((1 - preds.argmax(dim=1)) & labels).float().sum()
+    return tp / (tp + fn + 1e-8)
+
+def f1_score(preds, labels):
+    prec = precision(preds, labels)
+    rec = recall(preds, labels)
+    return 2 * prec * rec / (prec + rec + 1e-8)
+
+
+# def train_loop(args, model, optimizer, criterion, train_loader, val_loader, scheduler):
+#     pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
+#     train_lb_size = train_loader.dataset.__len__()
+#     val_size = val_loader.dataset.__len__()
+#     wandb.init(
+#         project='SceneUnderstanding',
+#         name=f'{args.name}_{train_lb_size}LB_{val_size}VL',
+#         config=args
+#     )
+#     train_iter = iter(train_loader)
+#     train_loss = AverageMeter()
+#     val_loss = AverageMeter()
+#     train_acc = AverageMeter()
+#     val_acc = AverageMeter()
+#     top1_acc = 0
+
+#     for step in range(args.train_steps):
+#         model.train()
+#         try:
+#             batch = next(train_iter)
+#         except:
+#             train_iter = iter(train_loader)
+#             batch = next(train_iter)
+
+#         imgs, labels, _ = batch
+#         imgs, labels = imgs.to(args.device), labels.to(args.device)
+#         optimizer.zero_grad()
+#         preds = model(imgs)
+#         loss = criterion(preds, labels)
+#         train_loss.update(loss.item())
+#         train_acc.update(accuracy(preds, labels))
+#         loss.backward()
+#         optimizer.step()
+#         scheduler.step()
+#         pbar.update(1)
+#         pbar.set_description(f"{step+1:4d}/{args.train_steps}  train/loss: {train_loss.avg :.4E} | train/acc: {train_acc.avg:.4f}")
+        
+#         if (step + 1) % args.eval_steps == 0:
+#             pbar.close()
+#             pbar = tqdm.tqdm(total=len(val_loader), position=0, leave=True, desc="Validating...")
+#             model.eval()
+#             for val_batch in val_loader:
+#                 imgs, labels, _ = val_batch
+#                 imgs, labels = imgs.to(args.device), labels.to(args.device)
+#                 with torch.inference_mode():
+#                     preds = model(imgs)
+#                     loss = criterion(preds, labels)
+#                     val_loss.update(loss.item())
+#                     val_acc.update(accuracy(preds, labels))
+#                 pbar.update(1)
+#             pbar.set_description(f"{step+1:4d}/{args.train_steps}  VALID/loss: {val_loss.avg:.4E} | VALID/acc: {val_acc.avg:.4f}")
+#             pbar.close()
+#             if val_acc.avg > top1_acc:
+#                 top1_acc = val_acc.avg
+#                 save_path = Path('checkpoints/')
+#                 save_path.mkdir(parents=True, exist_ok=True)
+#                 save_path = save_path / f'{args.name}.pth'
+#                 torch.save(model.state_dict(), save_path)
+#                 wandb.save(f'{args.name}.pth')
+#                 print(colored(f"--> Model saved at {save_path}", "yellow"))
+#             wandb.log({
+#                 "train/loss": train_loss.avg,
+#                 "train/acc": train_acc.avg,
+#                 "val/loss": val_loss.avg,
+#                 "val/acc": val_acc.avg,
+#                 "top1_acc": top1_acc
+#             }, step = step)
+#             # wandb.watch(models = model, log='all')
+#             print(f'top1_acc: {top1_acc:.6f}\n')
+#             val_loss.reset()
+#             val_acc.reset()
+#             train_loss.reset()
+#             train_acc.reset()
+#             pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
+
+
+
 def train_loop(args, model, optimizer, criterion, train_loader, val_loader, scheduler):
-    pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
+    # pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
     train_lb_size = train_loader.dataset.__len__()
     val_size = val_loader.dataset.__len__()
     wandb.init(
@@ -60,66 +167,101 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
     val_loss = AverageMeter()
     train_acc = AverageMeter()
     val_acc = AverageMeter()
+    train_prec = AverageMeter()
+    val_prec = AverageMeter()
+    train_rec = AverageMeter()
+    val_rec = AverageMeter()
+    train_f1 = AverageMeter()
+    val_f1 = AverageMeter()
     top1_acc = 0
+    top_f1 = 0
+    model.train()
 
-    for step in range(args.train_steps):
-        model.train()
-        try:
-            batch = next(train_iter)
-        except:
-            train_iter = iter(train_loader)
-            batch = next(train_iter)
+    # for step in range(args.train_steps):
+    epochs = int(100e3)
+    for epoch in range(epochs):
+        pbar = tqdm.tqdm(total=len(train_loader), position=0, leave=True, desc="Training...")
+        for batch in train_loader:
+            # model.train()
+            # try:
+            #     batch = next(train_iter)
+            # except:
+            #     train_iter = iter(train_loader)
+            #     batch = next(train_iter)
 
-        imgs, labels, _ = batch
-        imgs, labels = imgs.to(args.device), labels.to(args.device)
-        optimizer.zero_grad()
-        preds = model(imgs)
-        loss = criterion(preds, labels)
-        train_loss.update(loss.item())
-        train_acc.update(accuracy(preds, labels))
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
-        pbar.update(1)
-        pbar.set_description(f"{step+1:4d}/{args.train_steps}  train/loss: {train_loss.avg :.4E} | train/acc: {train_acc.avg:.4f}")
+            imgs, labels, _ = batch
+            imgs, labels = imgs.to(args.device), labels.to(args.device)
+            optimizer.zero_grad()
+            preds = model(imgs)
+            loss = criterion(preds, labels)
+            train_loss.update(loss.item())
+            acc_res, train_cm = accuracy(preds, labels)
+            train_acc.update(acc_res)
+            train_prec.update(precision(preds, labels))
+            train_rec.update(recall(preds, labels))
+            train_f1.update(f1_score(preds, labels))
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+            pbar.update(1)
+            pbar.set_description(f"{epoch+1:4d}/{epochs}  train/loss: {train_loss.avg :.4E} | "
+                                f"train/acc: {train_acc.avg:.4f} | "
+                                f"train/prec: {train_prec.avg:.4f} | "
+                                f"train/rec: {train_rec.avg:.4f} | "
+                                f"train/f1: {train_f1.avg:.4f}")
+        pbar.close()
         
-        if (step + 1) % args.eval_steps == 0:
-            pbar.close()
-            pbar = tqdm.tqdm(total=len(val_loader), position=0, leave=True, desc="Validating...")
-            model.eval()
-            for val_batch in val_loader:
-                imgs, labels, _ = val_batch
-                imgs, labels = imgs.to(args.device), labels.to(args.device)
-                with torch.inference_mode():
-                    preds = model(imgs)
-                    loss = criterion(preds, labels)
-                    val_loss.update(loss.item())
-                    val_acc.update(accuracy(preds, labels))
-                pbar.update(1)
-            pbar.set_description(f"{step+1:4d}/{args.train_steps}  VALID/loss: {val_loss.avg:.4E} | VALID/acc: {val_acc.avg:.4f}")
-            pbar.close()
-            if val_acc.avg > top1_acc:
-                top1_acc = val_acc.avg
-                save_path = Path('checkpoints/')
-                save_path.mkdir(parents=True, exist_ok=True)
-                save_path = save_path / f'{args.name}.pth'
-                torch.save(model.state_dict(), save_path)
-                wandb.save(f'{args.name}.pth')
-                print(colored(f"--> Model saved at {save_path}", "yellow"))
-            wandb.log({
-                "train/loss": train_loss.avg,
-                "train/acc": train_acc.avg,
-                "val/loss": val_loss.avg,
-                "val/acc": val_acc.avg,
-                "top1_acc": top1_acc
-            }, step = step)
-            # wandb.watch(models = model, log='all')
-            print(f'top1_acc: {top1_acc:.6f}\n')
-            val_loss.reset()
-            val_acc.reset()
-            train_loss.reset()
-            train_acc.reset()
-            pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
+        # if (step + 1) % args.eval_steps == 0:
+            # pbar.close()
+        pbar = tqdm.tqdm(total=len(val_loader), position=0, leave=True, desc="Validating...")
+        model.eval()
+        for val_batch in val_loader:
+            imgs, labels, _ = val_batch
+            imgs, labels = imgs.to(args.device), labels.to(args.device)
+            with torch.inference_mode():
+                preds = model(imgs)
+                loss = criterion(preds, labels)
+                val_loss.update(loss.item())
+                acc_res, val_cm = accuracy(preds, labels)
+                val_acc.update(acc_res)
+                val_prec.update(precision(preds, labels))
+                val_rec.update(recall(preds, labels))
+                val_f1.update(f1_score(preds, labels))
+            pbar.update(1)
+        pbar.set_description(f"{epoch+1:4d}/{epochs}  VALID/loss: {val_loss.avg:.4E} | "
+                                f"VALID/acc: {val_acc.avg:.4f} | "
+                                f"VALID/prec: {val_prec.avg:.4f} | "
+                                f"VALID/rec: {val_rec.avg:.4f} | "
+                                f"VALID/f1: {val_f1.avg:.4f}")
+        pbar.close()
+        if val_f1.avg > top_f1:
+            top_f1 = val_f1.avg
+            save_path = Path('checkpoints/')
+            save_path.mkdir(parents=True, exist_ok=True)
+            save_path = save_path / f'{args.name}.pth'
+            torch.save(model.state_dict(), save_path)
+            wandb.save(f'{args.name}.pth')
+            print(colored(f"--> Model saved at {save_path}", "yellow"))
+        # wandb.log({
+        #     "train/loss": train_loss.avg,
+        #     "train/acc": train_acc.avg,
+        #     "val/loss": val_loss.avg,
+        #     "val/acc": val_acc.avg,
+        #     "top1_acc": top1_acc
+        # }, step = step)
+        # wandb.watch(models = model, log='all')
+        print(f'top_f1: {top_f1:.6f}\n')
+        val_loss.reset()
+        val_acc.reset()
+        train_loss.reset()
+        train_acc.reset()
+        train_prec.reset()
+        val_prec.reset()
+        train_rec.reset()
+        val_rec.reset()
+        train_f1.reset()
+        val_f1.reset()
+        # pbar = tqdm.tqdm(total=args.eval_steps, position=0, leave=True)
 
 
 def set_seeds(seed):
@@ -130,10 +272,6 @@ def set_seeds(seed):
     torch.backends.cudnn.benchmark = False
     np.random.seed(seed)
     random.seed(seed)
-
-
-def accuracy(preds, labels):
-    return (preds.argmax(dim=1) == labels).float().mean()
 
 
 
