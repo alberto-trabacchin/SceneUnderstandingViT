@@ -71,7 +71,7 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
     model.train()
 
     # for step in range(args.train_steps):
-    epochs = 100
+    epochs = int(100e3)
     for epoch in range(epochs):
         pbar = tqdm.tqdm(total=len(train_loader), position=0, leave=True, desc="Training...")
         for batch in train_loader:
@@ -88,7 +88,8 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
             preds = model(imgs)
             loss = criterion(preds, labels)
             train_loss.update(loss.item())
-            train_acc.update(accuracy(preds, labels))
+            train_acc, train_cm = accuracy(preds, labels)
+            train_acc.update(train_acc)
             train_prec.update(precision(preds, labels))
             train_rec.update(recall(preds, labels))
             train_f1.update(f1_score(preds, labels))
@@ -114,7 +115,8 @@ def train_loop(args, model, optimizer, criterion, train_loader, val_loader, sche
                 preds = model(imgs)
                 loss = criterion(preds, labels)
                 val_loss.update(loss.item())
-                val_acc.update(accuracy(preds, labels))
+                val_acc, val_cm = accuracy(preds, labels)
+                val_acc.update(val_acc)
                 val_prec.update(precision(preds, labels))
                 val_rec.update(recall(preds, labels))
                 val_f1.update(f1_score(preds, labels))
@@ -166,13 +168,28 @@ def set_seeds(seed):
 
 
 def accuracy(preds, labels):
-    return (preds.argmax(dim=1) == labels).float().mean()
+    tp = (preds.argmax(dim=1) & labels).float().sum()
+    tn = ((1 - preds.argmax(dim=1)) & (1 - labels)).float().sum()
+    fp = (preds.argmax(dim=1) & (1 - labels)).float().sum()
+    fn = ((1 - preds.argmax(dim=1)) & labels).float().sum()
+    acc = (tp + tn) / (tp + tn + fp + fn + 1e-8)
+    conf_mat = {
+        'tp': tp,
+        'tn': tn,
+        'fp': fp,
+        'fn': fn
+    }
+    return acc, conf_mat
 
 def precision(preds, labels):
-    return (preds.argmax(dim=1) & labels).float().sum() / (preds.argmax(dim=1).float().sum() + 1e-8)
+    tp = (preds.argmax(dim=1) & labels).float().sum()
+    fp = (preds.argmax(dim=1) & (1 - labels)).float().sum()
+    return tp / (tp + fp + 1e-8)
 
 def recall(preds, labels):
-    return (preds.argmax(dim=1) & labels).float().sum() / (labels.float().sum() + 1e-8)
+    tp = (preds.argmax(dim=1) & labels).float().sum()
+    fn = ((1 - preds.argmax(dim=1)) & labels).float().sum()
+    return tp / (tp + fn + 1e-8)
 
 def f1_score(preds, labels):
     prec = precision(preds, labels)
@@ -202,10 +219,10 @@ if __name__ == '__main__':
         image_size = args.resize,
         patch_size = 20,
         num_classes = 2,
-        dim = 16,
-        depth = 1,
-        heads = 1,
-        mlp_dim = 16
+        dim = 512,
+        depth = 4,
+        heads = 4,
+        mlp_dim = 512
     )
 
     if torch.cuda.device_count() > 1:
