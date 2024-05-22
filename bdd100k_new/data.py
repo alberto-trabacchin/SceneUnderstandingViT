@@ -5,35 +5,47 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
 class CustomBDD100kDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, transform=None, labeled=True):
         """
         Args:
-            root_dir (string): Directory with all the subfolders containing images.
-            transform (callable, optional): Optional transform to be applied on a sample.
+            root_dir (string): Directory with all the images.
+            transform (callable, optional): Transform to be applied on a sample.
+            labeled (bool, optional): Indicates if the dataset is labeled.
         """
         self.root_dir = root_dir
         self.transform = transform
+        self.labeled = labeled
         self.samples = []
 
-        # Load all the images and their labels from subdirectories
-        for label_dir in ['class_0', 'class_1']:
-            class_label = int(label_dir.split('_')[-1])
-            class_dir = os.path.join(root_dir, label_dir)
-            for img_file in os.listdir(class_dir):
+        if labeled:
+            for label_dir in ['class_0', 'class_1']:
+                class_label = int(label_dir.split('_')[-1])
+                class_dir = os.path.join(root_dir, label_dir)
+                for img_file in os.listdir(class_dir):
+                    if img_file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        self.samples.append((os.path.join(class_dir, img_file), class_label))
+        else:
+            for img_file in os.listdir(root_dir):
                 if img_file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    self.samples.append((os.path.join(class_dir, img_file), class_label))
+                    self.samples.append(os.path.join(root_dir, img_file))
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        img_path, label = self.samples[idx]
+        if self.labeled:
+            img_path, label = self.samples[idx]
+        else:
+            img_path = self.samples[idx]
+            label = -1  # Use -1 or another placeholder for unlabeled data
+
         image = Image.open(img_path).convert('RGB')
         
         if self.transform:
             image = self.transform(image)
-        
+
         return image, torch.tensor(label)
+
 
 
 
