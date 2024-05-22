@@ -303,10 +303,10 @@ if __name__ == '__main__':
         image_size = args.resize,
         patch_size = 20,
         num_classes = args.num_classes,
-        dim = 128,
-        depth = 2,
-        heads = 2,
-        mlp_dim = 128
+        dim = 16,
+        depth = 1,
+        heads = 1,
+        mlp_dim = 16
     )
 
     model.to(args.device)
