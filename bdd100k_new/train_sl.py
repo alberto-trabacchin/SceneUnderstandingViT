@@ -71,7 +71,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs):
                        f'{phase}_accuracy': epoch_acc, 
                        f'{phase}_recall': epoch_recall, 
                        f'{phase}_precision': epoch_precision, 
-                       f'{phase}_f1': epoch_f1})
+                       f'{phase}_f1': epoch_f1}, step=epoch)
 
 
 if __name__ == '__main__':
