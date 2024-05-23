@@ -6,6 +6,7 @@ from torchvision import models, transforms
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 from tqdm import tqdm
 from data import CustomBDD100kDataset
+import wandb
 
 
 def train_model(model, criterion, optimizer, scheduler, num_epochs):
@@ -59,12 +60,18 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs):
             epoch_f1 = f1_score(all_labels, all_preds, average='binary')
 
             print(f'{phase.capitalize()} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} Recall: {epoch_recall:.4f} Precision: {epoch_precision:.4f} F1: {epoch_f1:.4f}')
-
+            
             # Deep copy the model
             if phase == 'val' and epoch_loss < best_loss:
                 best_loss = epoch_loss
                 torch.save(model.state_dict(), 'best_model.pth')
                 print('Best model saved with loss: {:.4f}'.format(best_loss))
+            
+            wandb.log({f'{phase}_loss': epoch_loss, 
+                       f'{phase}_accuracy': epoch_acc, 
+                       f'{phase}_recall': epoch_recall, 
+                       f'{phase}_precision': epoch_precision, 
+                       f'{phase}_f1': epoch_f1})
 
 
 if __name__ == '__main__':
@@ -73,10 +80,29 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Hyperparameters
-    num_epochs = 10
+    num_epochs = 100
     batch_size = 40
     learning_rate = 1e-4
     num_workers = 4
+    model_weights = 'ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1'
+    wandb_name = 'test_run'
+
+
+    # start a new wandb run to track this script
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="ViT-BDD100k",
+        name=wandb_name,
+
+        # track hyperparameters and run metadata
+        config={
+        "learning_rate": learning_rate,
+        "architecture": "ViT",
+        "dataset": "BDD100k",
+        "epochs": num_epochs,
+        "weights": model_weights
+        }
+    )
 
     # Transforms
     transform = transforms.Compose([
@@ -98,7 +124,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    model = models.vit_l_16(weights = 'ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1')  # Load a pre-trained Vision Transformer
+    model = models.vit_l_16(weights = model_weights)  # Load a pre-trained Vision Transformer
     model.heads = nn.Linear(1024, 2)  # Adjust for binary classification
 
     if torch.cuda.device_count() > 1:
