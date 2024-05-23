@@ -6,7 +6,27 @@ from torchvision import models, transforms
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 from tqdm import tqdm
 from data import CustomBDD100kDataset
+from vit_pytorch import ViT
 import wandb
+import argparse
+import random
+import numpy as np
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train a Vision Transformer on BDD100k')
+    parser.add_argument("--data-path", type=str, default='/home/alberto/datasets/bdd100k/')
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--epochs", type=int, default=1000)
+    args = parser.parse_args()
+    return args
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 def train_model(model, criterion, optimizer, scheduler, num_epochs):
@@ -71,17 +91,25 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs):
                        f'{phase}_accuracy': epoch_acc, 
                        f'{phase}_recall': epoch_recall, 
                        f'{phase}_precision': epoch_precision, 
-                       f'{phase}_f1': epoch_f1}, step=epoch)
+                       f'{phase}_f1': epoch_f1}, step=epoch+1)
+
+
+def vit_l_16_model(weights):
+    model = models.vit_l_16(weights = weights)  # Load a pre-trained Vision Transformer
+    model.heads = nn.Linear(1024, 2)  # Adjust for binary classification
+    return model
 
 
 if __name__ == '__main__':
 
+    args = parse_args()
+    set_seed(42)
     # Device configuration
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Hyperparameters
-    num_epochs = 100
-    batch_size = 40
+    num_epochs = args.epochs
+    batch_size = args.batch_size
     learning_rate = 1e-4
     num_workers = 4
     model_weights = 'ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1'
@@ -113,19 +141,29 @@ if __name__ == '__main__':
 
     # Assuming you have already defined CustomBDD100kDataset
     train_dataset = CustomBDD100kDataset(
-        root_dir='/home/alberto-trabacchin-wj/datasets/bdd100k/custom_dataset/train/',  # Update the path accordingly
+        root_dir=f'{args.data_path}/custom_dataset/train/',  # Update the path accordingly
         transform=transform
     )
     val_dataset = CustomBDD100kDataset(
-        root_dir='/home/alberto-trabacchin-wj/datasets/bdd100k/custom_dataset/val/',    # Update the path accordingly
+        root_dir=f'{args.data_path}/custom_dataset/val/',    # Update the path accordingly
         transform=transform
     )
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    model = models.vit_l_16(weights = model_weights)  # Load a pre-trained Vision Transformer
-    model.heads = nn.Linear(1024, 2)  # Adjust for binary classification
+    # model = vit_l_16_model(model_weights)
+    model = ViT(
+        image_size=512,
+        patch_size=32,
+        num_classes=2,
+        dim=1024,
+        depth=5,
+        heads=4,
+        mlp_dim=4096,
+        dropout=0.1,
+        emb_dropout=0.1
+    )
 
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
