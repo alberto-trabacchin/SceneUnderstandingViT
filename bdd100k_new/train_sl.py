@@ -18,6 +18,7 @@ def parse_args():
     parser.add_argument("--data-path", type=str, default='/home/alberto/datasets/bdd100k/')
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=1000)
+    parser.add_argument("--name", type=str, default='test_run')
     args = parser.parse_args()
     return args
 
@@ -113,7 +114,19 @@ if __name__ == '__main__':
     learning_rate = 1e-4
     num_workers = 4
     model_weights = 'ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1'
-    wandb_name = 'test_run'
+    wandb_name = args.name
+
+    vit_params = {
+        "image_size": 512,
+        "patch_size": 32,
+        "num_classes": 2,
+        "dim": 16,
+        "depth": 1,
+        "heads": 1,
+        "mlp_dim": 16,
+        "dropout": 0.1,
+        "emb_dropout": 0.1
+    }
 
 
     # start a new wandb run to track this script
@@ -128,13 +141,13 @@ if __name__ == '__main__':
         "architecture": "ViT",
         "dataset": "BDD100k",
         "epochs": num_epochs,
-        "weights": model_weights
+        "params": vit_params
         }
     )
 
     # Transforms
     transform = transforms.Compose([
-        transforms.Resize((512, 512)),
+        transforms.Resize((vit_params["image_size"], vit_params["image_size"])),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
@@ -154,15 +167,15 @@ if __name__ == '__main__':
 
     # model = vit_l_16_model(model_weights)
     model = ViT(
-        image_size=512,
-        patch_size=32,
-        num_classes=2,
-        dim=1024,
-        depth=5,
-        heads=4,
-        mlp_dim=4096,
-        dropout=0.1,
-        emb_dropout=0.1
+        image_size=vit_params["image_size"],
+        patch_size=vit_params["patch_size"],
+        num_classes=vit_params["num_classes"],
+        dim=vit_params["dim"],
+        depth=vit_params["depth"],
+        heads=vit_params["heads"],
+        mlp_dim=vit_params["mlp_dim"],
+        dropout=vit_params["dropout"],
+        emb_dropout=vit_params["emb_dropout"]
     )
 
     if torch.cuda.device_count() > 1:
