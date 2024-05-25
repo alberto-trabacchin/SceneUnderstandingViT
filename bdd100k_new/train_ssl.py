@@ -417,19 +417,32 @@ if __name__ == '__main__':
     learning_rate = 1e-4
     num_workers = 4
     model_weights = 'ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1'
-    wandb_name = args.name
+    wandb_name = args.name + "_SSL"
 
     vit_params = {
         "image_size": 512,
         "patch_size": 32,
         "num_classes": 2,
-        "dim": 16,
-        "depth": 1,
-        "heads": 1,
-        "mlp_dim": 16,
+        "dim": 512,
+        "depth": 12,
+        "heads": 8,
+        "mlp_dim": 2048,
         "dropout": 0.1,
         "emb_dropout": 0.1
     }
+
+    # For pretrained model
+    # vit_params = {
+    #     "image_size": 512,
+    #     "patch_size": 32,
+    #     "num_classes": 2,
+    #     "dim": 1024,
+    #     "depth": 24,
+    #     "heads": 16,
+    #     "mlp_dim": 4096,
+    #     "dropout": 0.1,
+    #     "emb_dropout": 0.1
+    # }
 
 
     # start a new wandb run to track this script
