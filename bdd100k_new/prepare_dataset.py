@@ -98,6 +98,7 @@ def prepare_unlabeled_set(vids_dir, output_dir, size):
                 break
             if counter % sample_fac == 0:
                 frames.append(frame)
+            counter += 1
         cap.release()
 
         # Resize the frames to be square
@@ -123,9 +124,9 @@ if __name__ == '__main__':
     videos_directory = Path(f'{args.data_path}/videos/train/')
 
     # Run the dataset preparation
-    # print('Preparing custom train dataset...')
-    # prepare_custom_dataset(train_annotation_file, train_image_directory, output_directory/"train", desired_size)
-    # print('Preparing custom validation dataset...')
-    # prepare_custom_dataset(val_annotation_file, val_image_directory, output_directory/"val", desired_size)
+    print('Preparing custom train dataset...')
+    prepare_custom_dataset(train_annotation_file, train_image_directory, output_directory/"train", desired_size)
+    print('Preparing custom validation dataset...')
+    prepare_custom_dataset(val_annotation_file, val_image_directory, output_directory/"val", desired_size)
     print('Preparing custom unlabeled dataset...')
     prepare_unlabeled_set(videos_directory, output_directory/"unlabeled", desired_size)
