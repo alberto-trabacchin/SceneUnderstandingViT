@@ -111,7 +111,7 @@ if __name__ == '__main__':
     # Hyperparameters
     num_epochs = args.epochs
     batch_size = args.batch_size
-    learning_rate = 1e-4
+    learning_rate = 1e-3
     num_workers = 4
     model_weights = 'ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1'
     wandb_name = args.name
@@ -186,6 +186,7 @@ if __name__ == '__main__':
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)  # Example scheduler
+    # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)  # Example scheduler
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=1e-4)  # Example scheduler
 
     train_model(model, criterion, optimizer, scheduler, num_epochs)
