@@ -48,7 +48,7 @@ def train_loop(
         teacher_sched, student_sched,
         train_lb_loader, train_ul_loader, val_loader
 ):
-    train_lb_iter = iter(train_lb_loader)
+    # train_lb_iter = iter(train_lb_loader)
     train_ul_iter = iter(train_ul_loader)
     teach_run_loss = 0.0
     stud_run_loss = 0.0
@@ -539,12 +539,12 @@ if __name__ == '__main__':
     teacher_sched = torch.optim.lr_scheduler.CosineAnnealingLR(
         teacher_optim, 
         T_max=args.epochs, 
-        eta_min=0.0001
+        eta_min=1e-4
     )
     student_sched = torch.optim.lr_scheduler.CosineAnnealingLR(
         student_optim,
         T_max=args.epochs,
-        eta_min=0.0001
+        eta_min=1e-4
     )
 
 
