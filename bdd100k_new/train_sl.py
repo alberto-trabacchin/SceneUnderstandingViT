@@ -120,10 +120,10 @@ if __name__ == '__main__':
         "image_size": 512,
         "patch_size": 32,
         "num_classes": 2,
-        "dim": 16,
-        "depth": 1,
-        "heads": 1,
-        "mlp_dim": 16,
+        "dim": 512,
+        "depth": 12,
+        "heads": 8,
+        "mlp_dim": 2048,
         "dropout": 0.1,
         "emb_dropout": 0.1
     }

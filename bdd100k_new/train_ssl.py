@@ -445,21 +445,6 @@ if __name__ == '__main__':
     # }
 
 
-    # start a new wandb run to track this script
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="ViT-BDD100k",
-        name=wandb_name,
-
-        # track hyperparameters and run metadata
-        config={
-        "learning_rate": learning_rate,
-        "architecture": "ViT",
-        "dataset": "BDD100k",
-        "epochs": num_epochs,
-        "params": vit_params
-        }
-    )
     transform = transforms.Compose([
         transforms.Resize((vit_params["image_size"], vit_params["image_size"])),
         transforms.ToTensor(),
@@ -478,6 +463,26 @@ if __name__ == '__main__':
         root_dir=f'{args.data_path}/custom_dataset/val/',    # Update the path accordingly
         transform=transform
     )
+    print(f"Train LB: {len(train_lb_dataset)} | Train UL: {len(train_ul_dataset)} | Val: {len(val_dataset)}")
+       # start a new wandb run to track this script
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="ViT-BDD100k",
+        name=wandb_name,
+
+        # track hyperparameters and run metadata
+        config={
+        "learning_rate": learning_rate,
+        "architecture": "ViT",
+        "dataset": "BDD100k",
+        "epochs": num_epochs,
+        "params": vit_params,
+        "ul_size": len(train_ul_dataset),
+        "lb_size": len(train_lb_dataset),
+        "val_size": len(val_dataset)
+        }
+    )
+
     train_lb_loader = DataLoader(
         dataset = train_lb_dataset,
         batch_size = args.batch_size,
