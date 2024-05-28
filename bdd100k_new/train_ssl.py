@@ -414,7 +414,7 @@ if __name__ == '__main__':
     # Hyperparameters
     num_epochs = args.epochs
     batch_size = args.batch_size
-    learning_rate = 1e-4
+    learning_rate = 1e-3
     num_workers = 4
     model_weights = 'ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1'
     wandb_name = args.name + "_SSL"
