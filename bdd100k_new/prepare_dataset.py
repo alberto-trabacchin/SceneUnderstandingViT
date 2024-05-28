@@ -104,7 +104,7 @@ def prepare_unlabeled_set(vids_dir, output_dir, size):
         # Resize the frames to be square
         for i, frame in enumerate(frames):
             frame = cv2.resize(frame, (size, size), interpolation=cv2.INTER_LANCZOS4)
-            f_dir = output_dir / f"{video_name}_{i * sample_fac}.png"
+            f_dir = output_dir / f"{video_name}_{i * sample_fac}.jpg"
             cv2.imwrite(str(f_dir), frame)
         pbar.update(1)
     pbar.close()
