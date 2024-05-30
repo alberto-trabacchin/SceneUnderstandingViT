@@ -52,6 +52,7 @@ def train_loop(
     train_ul_iter = iter(train_ul_loader)
     teach_run_loss = 0.0
     stud_run_loss = 0.0
+    min_val_loss = float('inf')
 
     for step in range(args.epochs):
         teacher.train()
@@ -188,7 +189,15 @@ def train_loop(
             "student/val_rec": student_val_rec,
             "teacher/val_f1": teacher_val_f1,
             "student/val_f1": student_val_f1
-            }, step = step)    
+            }, step = step)
+        
+        if student_val_loss < min_val_loss:
+            min_val_loss = student_val_loss
+            save_path = Path('checkpoints/')
+            save_path.mkdir(parents=True, exist_ok=True)
+            save_path = save_path / f'best_ssl_model.pth'
+            torch.save(student.state_dict(), save_path)
+            print(colored(f"--> Model saved at {save_path}", "yellow"))
 
 
 
