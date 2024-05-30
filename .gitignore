@@ -172,4 +172,3 @@ bdd100k_experiments/checkpoints/*
 
 bdd100k_new/best_model.pth
 bdd100k_new/wandb
-bdd100k_new/checkpoints
